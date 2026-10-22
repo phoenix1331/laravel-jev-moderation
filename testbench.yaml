@@ -1,0 +1,6 @@
+# Lets vendor/bin/testbench run package commands against a throwaway app.
+providers:
+  - Phoenix1331\JevModeration\JevModerationServiceProvider
+
+migrations:
+  - database/migrations

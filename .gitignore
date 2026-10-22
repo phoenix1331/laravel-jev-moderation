@@ -1,0 +1,10 @@
+/vendor
+/node_modules
+/build
+/coverage
+/.phpunit.cache
+/test-app
+composer.lock
+.phpunit.result.cache
+.env
+.claude/
