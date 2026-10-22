@@ -26,3 +26,8 @@ arch('contracts are interfaces')
 arch('exceptions are throwable')
     ->expect('Phoenix1331\JevModeration\Exceptions')
     ->toImplement(Throwable::class);
+
+arch('events are immutable')
+    ->expect('Phoenix1331\JevModeration\Events')
+    ->toBeFinal()
+    ->toBeReadOnly();

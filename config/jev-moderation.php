@@ -50,6 +50,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Queue
+    |--------------------------------------------------------------------------
+    |
+    | Checks run on the queue after the saving transaction commits. Set sync
+    | to true to classify inline instead (e.g. chat, before broadcasting): a
+    | failure then leaves the decision pending and fires ModerationFailed
+    | straight away, with no retries.
+    |
+    | Rate limits, overload and timeouts are retried up to tries times, with
+    | exponential backoff from backoff seconds (or Jev's retry-after). Other
+    | failures, such as a bad key, fail at once.
+    |
+    */
+
+    'queue' => env('JEV_MODERATION_QUEUE'),
+
+    'connection' => env('JEV_MODERATION_QUEUE_CONNECTION'),
+
+    'sync' => (bool) env('JEV_MODERATION_SYNC', false),
+
+    'tries' => (int) env('JEV_MODERATION_TRIES', 5),
+
+    'backoff' => (int) env('JEV_MODERATION_BACKOFF', 10),
+
+    /*
+    |--------------------------------------------------------------------------
     | Store Content
     |--------------------------------------------------------------------------
     |

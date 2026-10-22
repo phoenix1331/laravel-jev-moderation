@@ -11,8 +11,8 @@ function manager(): DriverManager
     return app(DriverManager::class)->extend('static', fn (): ModerationDriver => new StaticDriver);
 }
 
-it('defaults to the jev driver', function (): void {
-    expect(config('jev-moderation.driver'))->toBe('jev');
+it('ships with the jev driver as the default', function (): void {
+    expect((require __DIR__.'/../../../config/jev-moderation.php')['driver'])->toBe('jev');
 });
 
 it('resolves the configured driver', function (): void {

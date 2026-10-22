@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Phoenix1331\JevModeration\Data\Classification;
+use Phoenix1331\JevModeration\Drivers\DriverManager;
+use Phoenix1331\JevModeration\Drivers\FakeDriver;
 use Phoenix1331\JevModeration\Tests\TestCase;
 
 pest()->extend(TestCase::class)->in('Unit', 'Feature', 'Accuracy');
@@ -35,4 +37,16 @@ function jevClassification(string $fixture): Classification
         driver: 'jev',
         model: 'jev-1.14.0',
     );
+}
+
+/**
+ * The shared FakeDriver the package classifies with in tests.
+ */
+function moderationFake(): FakeDriver
+{
+    $fake = app(DriverManager::class)->driver('fake');
+
+    expect($fake)->toBeInstanceOf(FakeDriver::class);
+
+    return $fake;
 }

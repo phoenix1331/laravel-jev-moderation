@@ -18,6 +18,14 @@ abstract class TestCase extends Orchestra
         Http::preventStrayRequests();
     }
 
+    /**
+     * Tests classify with FakeDriver unless they choose another driver.
+     */
+    protected function defineEnvironment($app): void
+    {
+        $app->make('config')->set('jev-moderation.driver', 'fake');
+    }
+
     protected function defineDatabaseMigrations(): void
     {
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Queue;
 use Phoenix1331\JevModeration\Attributes\Moderate;
 use Phoenix1331\JevModeration\Enums\ModerationSource;
 use Phoenix1331\JevModeration\Enums\ModerationStatus;
@@ -14,6 +15,9 @@ use Phoenix1331\JevModeration\Tests\Fixtures\Models\ForumPost;
 use Phoenix1331\JevModeration\Tests\Fixtures\Models\Post;
 use Phoenix1331\JevModeration\Tests\Fixtures\Models\UnmarkedPost;
 use Phoenix1331\JevModeration\Tests\Fixtures\Models\User;
+
+// Pending decisions only: the check itself is covered in ModerateContentTest.
+beforeEach(fn () => Queue::fake());
 
 function forumPost(array $attributes = []): ForumPost
 {
