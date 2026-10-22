@@ -15,19 +15,19 @@ This is a Composer **package**, not a Laravel app. There is no `app/`, no UI, no
 
 ## Architecture at a glance
 
-Built so far: service provider, config, migration, `ModerationDecision`, enums, factory, driver contract, manager, data objects, `FakeDriver`, `JevDriver`, policies, presets, threshold resolver. The rest is the target layout from the brief.
+Built so far: service provider, config, migration, `ModerationDecision`, enums, factory, driver contract, manager, data objects, `FakeDriver`, `JevDriver`, policies, presets, threshold resolver, accuracy suite, `Moderatable` trait and `#[Moderate]`, pending decisions. The rest is the target layout from the brief.
 
 | Path | Role |
 |---|---|
 | `src/JevModerationServiceProvider.php` | Merges and publishes `config/jev-moderation.php` (tag `jev-moderation-config`); migrations (tag `jev-moderation-migrations`), commands |
-| `config/jev-moderation.php` | Built: `enabled`, `driver`, `drivers.jev` (key, model, base URL, timeout), `max_context_tokens`, `policy`, `policies` (`community`, `chat`, `strict`). To come: mode (`pre`/`post`), fail (`open`/`closed`), queue, `sync`, `store_content` |
+| `config/jev-moderation.php` | Built: `enabled`, `store_content`, `driver`, `drivers.jev` (key, model, base URL, timeout), `max_context_tokens`, `policy`, `policies` (`community`, `chat`, `strict`). To come: mode (`pre`/`post`), fail (`open`/`closed`), queue, `sync` |
 | `database/migrations/` | `moderation_decisions`: polymorphic, append-only, schema builder only, explicit index names under 64 characters; morph key type follows `Schema::morphUsingUuids()`/`morphUsingUlids()` |
-| `src/Models/ModerationDecision.php` | `@internal` Eloquent model: enum, float and array casts, `moderatable()` and `reviewedBy()` morphs |
+| `src/Models/ModerationDecision.php` | Public read API (handed out by the trait's relations): Eloquent model, enum, float and array casts, `moderatable()` and `reviewedBy()` morphs |
 | `src/Models/Builders/DecisionBuilder.php` | `@internal` builder returned by `newEloquentBuilder()`: `update`, `upsert`, `touch`, `increment`/`decrement`(`Each`), `delete`, `forceDelete` throw `Exceptions\DecisionsAreAppendOnly` |
 | `database/factories/ModerationDecisionFactory.php` | No Faker: `forModel()`, `pending()`, `passed()`, `flagged()`, `blocked()`, `reported()`, `approved()`, `rejected()`, `reviewedBy()`, `withContent()` |
-| `tests/Fixtures/Models/`, `tests/Fixtures/migrations/` | Host-app `Post` and `User` models and tables for tests; not shipped |
-| `src/Concerns/Moderatable.php`, `src/Attributes/Moderate.php` | Trait (relations, scope, human API) and `#[Moderate(fields, policy)]` |
-| `src/Observers/` | Shared observer on `created`/`updated`; skips when the content hash is unchanged |
+| `tests/Fixtures/Models/`, `tests/Fixtures/migrations/` | Host-app models and tables for tests, not shipped: `Post`, `User`, `ForumPost` (README example), `ChatMessage` (every override), `Comment` (default policy), `UnmarkedPost` (no attribute). Analysed by Larastan, which skips unused traits |
+| `src/Concerns/Moderatable.php`, `src/Attributes/Moderate.php` | Built: `#[Moderate(fields, policy)]` (read once per class by reflection); trait registers typed `created`/`updated` listeners that call `Moderator`; `moderatableContent()` (attribute fields, null/blank skipped, numbers and `Stringable` to text, anything else throws), `moderationContext()`, `moderationPolicy()`, `moderationAuthor()` (`user` relation), `moderationDecisions` (oldest first), `latestModeration` (`latestOfMany`), `toModerationSubject()`. To come: scope, human API |
+| `src/Moderation/Moderator.php`, `src/Moderation/ModerationSubject.php` | Built, `@internal`: skips when disabled, when an update changed none of the attribute fields, when content is empty, or when the hash equals the latest decision's; otherwise writes a `Pending` decision (policy name and version, hash, content only with `store_content`). Hash: sha256 of the content map with keys sorted, context excluded. To come: dispatch `ModerateContent` |
 | `src/Jobs/ModerateContent.php` | Queued after commit (or inline when `sync`); retries with backoff |
 | `src/Contracts/ModerationDriver.php` | Built: `classify(ModerationRequest): Classification`, `models(): list<string>`; both throw `DriverException` |
 | `src/Drivers/DriverManager.php` | Built, `@internal`: Laravel `Manager` keyed by `jev-moderation.driver`, `extend()` for custom drivers, guards that each driver implements the contract. Singleton; `ModerationDriver` binds to its default driver. Typed config guards throw on an empty model or base URL and a non-positive timeout or budget |
@@ -59,7 +59,10 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 
 | Decision | Why |
 |---|---|
-| Trait + shared observer, not middleware | Middleware only sees HTTP requests; content saved from jobs, APIs, Livewire or seeders would be missed |
+| Trait + model events, not middleware | Middleware only sees HTTP requests; content saved from jobs, APIs, Livewire or seeders would be missed. Typed `static fn (self $model)` listeners in `bootModeratable()` instead of an observer class: an observer receives a plain `Model` and would need an unreachable `method_exists()` guard. `saveQuietly()`/`withoutEvents()` skip moderation, as for any model event |
+| `ModerationDecision` is public for reads | The brief's `moderationDecisions`/`latestModeration` relations hand it out and `filament-jev-moderation` queries it; append-only keeps writes inside the package |
+| Content hash covers content only, keys sorted | Reordering `#[Moderate]` fields or changing context (thread title) is not a reason to re-check; `rescan` covers policy changes |
+| Emptied content records nothing | Nothing to classify; the earlier decision stands (a flagged post blanked by its author stays flagged) |
 | Per-category `review_above` and optional `block_above`, compared with `probabilities[category]` for every non-safe category | High threshold for irreversible actions, low threshold for "send to a human"; equal to a threshold counts as above. Jev's `confidence` measures distribution sharpness and shifts with the number of choices, so it only drives the policy's `uncertain_below` floor. A recorded answer with `fine` on top and `harassment` at 0.44 is why every category is checked |
 | Answering Jev version in a `model` column | Aliases move without notice (`jev-latest` answered as `jev-1.14.0` while the docs said 1.13); calibration groups Jev-vs-human agreement by version |
 | Content sent as named fields (`state: {content: {...}, context}`) | TypeSafe recommends named state; the hash covers the same structure that is sent |

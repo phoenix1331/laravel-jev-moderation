@@ -1,0 +1,178 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Phoenix1331\JevModeration\Concerns;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use InvalidArgumentException;
+use LogicException;
+use Phoenix1331\JevModeration\Attributes\Moderate;
+use Phoenix1331\JevModeration\Models\ModerationDecision;
+use Phoenix1331\JevModeration\Moderation\ModerationSubject;
+use Phoenix1331\JevModeration\Moderation\Moderator;
+use Phoenix1331\JevModeration\Policies\PolicyRegistry;
+use ReflectionClass;
+use ReflectionMethod;
+use Stringable;
+
+/**
+ * Moderates a model whenever it is created or its moderated content changes,
+ * whether saved from a request, a job, Livewire or a seeder.
+ *
+ *     #[Moderate(fields: ['title', 'body'], policy: 'community')]
+ *     class ForumPost extends Model
+ *     {
+ *         use Moderatable;
+ *     }
+ *
+ * @phpstan-require-extends Model
+ */
+trait Moderatable
+{
+    /** @var array<class-string, Moderate|null> */
+    private static array $moderateAttributes = [];
+
+    /**
+     * Model events, not middleware: content saved from jobs, APIs, Livewire
+     * or seeders is moderated too. saveQuietly() and withoutEvents() skip it.
+     */
+    public static function bootModeratable(): void
+    {
+        static::created(static fn (self $model) => app(Moderator::class)->saved($model->toModerationSubject(), created: true));
+        static::updated(static fn (self $model) => app(Moderator::class)->saved($model->toModerationSubject(), created: false));
+    }
+
+    /**
+     * Every decision, oldest first: checks, reports and human reviews.
+     *
+     * @return MorphMany<ModerationDecision, $this>
+     */
+    public function moderationDecisions(): MorphMany
+    {
+        return $this->morphMany(ModerationDecision::class, 'moderatable')->orderBy('id');
+    }
+
+    /**
+     * The decision that sets the current status.
+     *
+     * @return MorphOne<ModerationDecision, $this>
+     */
+    public function latestModeration(): MorphOne
+    {
+        return $this->morphOne(ModerationDecision::class, 'moderatable')->latestOfMany();
+    }
+
+    /**
+     * The content sent to the classifier, as field name to value. Defaults
+     * to the #[Moderate] fields; empty and null fields are left out.
+     *
+     * @return array<string, string>
+     */
+    public function moderatableContent(): array
+    {
+        $content = [];
+
+        foreach ((self::moderateAttribute() ?? throw self::missingAttribute())->fields as $field) {
+            $value = $this->getAttribute($field);
+
+            if ($value instanceof Stringable || is_int($value) || is_float($value)) {
+                $value = (string) $value;
+            }
+
+            if ($value !== null && ! is_string($value)) {
+                throw new InvalidArgumentException(sprintf(
+                    'Moderated field [%s] on [%s] must be text, %s given. Override moderatableContent() to format it.',
+                    $field,
+                    static::class,
+                    get_debug_type($value),
+                ));
+            }
+
+            if ($value !== null && trim($value) !== '') {
+                $content[$field] = $value;
+            }
+        }
+
+        return $content;
+    }
+
+    /**
+     * Material that helps the classifier understand the content, such as
+     * the parent thread or previous messages. Not part of the content hash.
+     */
+    public function moderationContext(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Who wrote the content: the user relation when the model has one.
+     */
+    public function moderationAuthor(): ?Model
+    {
+        if (! method_exists($this, 'user') || ! $this->user() instanceof Relation) {
+            return null;
+        }
+
+        $author = $this->getRelationValue('user');
+
+        return $author instanceof Model ? $author : null;
+    }
+
+    /**
+     * The policy name: from #[Moderate], else jev-moderation.policy.
+     */
+    public function moderationPolicy(): string
+    {
+        return self::moderateAttribute()->policy ?? app(PolicyRegistry::class)->defaultName();
+    }
+
+    /**
+     * @internal read by the Moderator on every save
+     */
+    public function toModerationSubject(): ModerationSubject
+    {
+        $content = $this->moderatableContent();
+
+        return new ModerationSubject(
+            model: $this,
+            policy: $this->moderationPolicy(),
+            content: $content,
+            context: $this->moderationContext(),
+            hash: ModerationSubject::hash($content),
+            fields: self::overridesContent() ? null : self::moderateAttribute()?->fields,
+        );
+    }
+
+    private static function moderateAttribute(): ?Moderate
+    {
+        if (! array_key_exists(static::class, self::$moderateAttributes)) {
+            $attributes = (new ReflectionClass(static::class))->getAttributes(Moderate::class);
+
+            self::$moderateAttributes[static::class] = $attributes === [] ? null : $attributes[0]->newInstance();
+        }
+
+        return self::$moderateAttributes[static::class];
+    }
+
+    /**
+     * A method that comes from this trait reports the trait's file; an
+     * override is declared anywhere else.
+     */
+    private static function overridesContent(): bool
+    {
+        return (new ReflectionMethod(static::class, 'moderatableContent'))->getFileName() !== (new ReflectionClass(Moderatable::class))->getFileName();
+    }
+
+    private static function missingAttribute(): LogicException
+    {
+        return new LogicException(sprintf(
+            '[%s] uses Moderatable but has no #[Moderate(fields: [...])] attribute. Add one, or override moderatableContent().',
+            static::class,
+        ));
+    }
+}

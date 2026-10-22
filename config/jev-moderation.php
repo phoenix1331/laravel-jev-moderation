@@ -50,6 +50,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Store Content
+    |--------------------------------------------------------------------------
+    |
+    | Moderated content is sent to TypeSafe either way. Off (the default),
+    | decisions keep only a sha256 hash of it; on, they also keep a copy,
+    | which reviewers can read but which is personal data you then hold twice.
+    |
+    */
+
+    'store_content' => (bool) env('JEV_MODERATION_STORE_CONTENT', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Context Budget
     |--------------------------------------------------------------------------
     |

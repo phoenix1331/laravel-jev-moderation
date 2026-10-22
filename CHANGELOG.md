@@ -10,6 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - `moderation_decisions` migration, published with the `jev-moderation-migrations` tag: polymorphic and append-only, with the answering Jev version, category, confidence, content hash and reviewer, portable across SQLite, PostgreSQL, MySQL and MariaDB
 - `ModerationStatus` and `ModerationSource` enums
+- `Moderatable` trait and `#[Moderate(fields: [...], policy: ...)]` attribute: creating a model, or changing its moderated content, records a pending decision, from any save path (requests, jobs, Livewire, seeders); unchanged content and updates to other columns are skipped
+- Overridable `moderatableContent()`, `moderationContext()`, `moderationPolicy()` and `moderationAuthor()` (defaults to a `user` relation), plus `moderationDecisions` and `latestModeration` relations
+- `store_content` config option (`JEV_MODERATION_STORE_CONTENT`, default off): decisions keep only a sha256 hash of the content unless turned on
 - `ModerationDriver` contract with `classify()` and `models()`, `ModerationRequest` and `Classification` data objects, and `DriverException` with a `retryable` flag; custom drivers register through the driver manager's `extend()`
 - Moderation policies in config, with `community`, `chat` and `strict` presets: a question, described choices with the safe choice last, `review_above` and optional `block_above` per category, and an optional `uncertain_below` confidence floor; `policy` config option (`JEV_MODERATION_POLICY`, default `community`)
 - Preset wording and thresholds checked against live Jev with a light accuracy suite (`composer test:accuracy`, results in `docs/accuracy.md`): banter in `chat` and blunt corrections in `strict` now read as fine, and `community` blocks hate at 0.90

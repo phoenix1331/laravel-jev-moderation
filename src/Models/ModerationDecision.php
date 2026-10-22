@@ -15,12 +15,11 @@ use Phoenix1331\JevModeration\Enums\ModerationStatus;
 use Phoenix1331\JevModeration\Models\Builders\DecisionBuilder;
 
 /**
- * One row per check, report or review. Append-only: saving an existing row,
- * deleting one, or a mass update or delete throws DecisionsAreAppendOnly.
- * The schema may change between minor releases, so the public API returns
- * data objects, not this model.
- *
- * @internal
+ * One row per check, report or review, read through a Moderatable model's
+ * moderationDecisions and latestModeration relations. Public API for reads:
+ * columns change only with a minor release and an UPGRADING.md entry.
+ * Append-only: saving an existing row, deleting one, or a mass update or
+ * delete throws DecisionsAreAppendOnly.
  *
  * @property int $id
  * @property string $moderatable_type

@@ -7,8 +7,12 @@ parameters:
         - src
         - config
         - database
+        # Fixtures are the only users of the Moderatable trait inside the package.
+        - tests/Fixtures
     # Larastan only allows env() in these directories.
     configDirectories:
         - config
         - database
+        # Fixtures are the only users of the Moderatable trait inside the package.
+        - tests/Fixtures
     tmpDir: build/phpstan

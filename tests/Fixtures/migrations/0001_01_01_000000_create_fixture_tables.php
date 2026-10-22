@@ -21,14 +21,33 @@ return new class extends Migration
 
         Schema::create('posts', function (Blueprint $table): void {
             $table->id();
+            $table->string('title')->default('');
+            $table->text('body')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('forum_posts', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('user_id')->nullable();
             $table->string('title');
-            $table->text('body');
+            $table->text('body')->nullable();
+            $table->unsignedInteger('views')->default(0);
+            $table->timestamps();
+        });
+
+        Schema::create('chat_messages', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('sender_id')->nullable();
+            $table->string('room');
+            $table->text('message');
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('chat_messages');
+        Schema::dropIfExists('forum_posts');
         Schema::dropIfExists('posts');
         Schema::dropIfExists('users');
     }
