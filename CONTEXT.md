@@ -15,12 +15,12 @@ This is a Composer **package**, not a Laravel app. There is no `app/`, no UI, no
 
 ## Architecture at a glance
 
-Built so far: service provider, config, migration, `ModerationDecision`, enums, factory. The rest is the target layout from the brief.
+Built so far: service provider, config, migration, `ModerationDecision`, enums, factory, driver contract, manager and data objects. The rest is the target layout from the brief.
 
 | Path | Role |
 |---|---|
 | `src/JevModerationServiceProvider.php` | Merges and publishes `config/jev-moderation.php` (tag `jev-moderation-config`); migrations (tag `jev-moderation-migrations`), commands |
-| `config/jev-moderation.php` | Driver, mode (`pre`/`post`), fail (`open`/`closed`), queue, `sync`, `store_content`, `max_context_tokens`, policies |
+| `config/jev-moderation.php` | Built: `enabled`, `driver`. To come: drivers, mode (`pre`/`post`), fail (`open`/`closed`), queue, `sync`, `store_content`, `max_context_tokens`, policies |
 | `database/migrations/` | `moderation_decisions`: polymorphic, append-only, schema builder only, explicit index names under 64 characters; morph key type follows `Schema::morphUsingUuids()`/`morphUsingUlids()` |
 | `src/Models/ModerationDecision.php` | `@internal` Eloquent model: enum, float and array casts, `moderatable()` and `reviewedBy()` morphs |
 | `src/Models/Builders/DecisionBuilder.php` | `@internal` builder returned by `newEloquentBuilder()`: `update`, `upsert`, `touch`, `increment`/`decrement`(`Each`), `delete`, `forceDelete` throw `Exceptions\DecisionsAreAppendOnly` |
@@ -29,10 +29,13 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | `src/Concerns/Moderatable.php`, `src/Attributes/Moderate.php` | Trait (relations, scope, human API) and `#[Moderate(fields, policy)]` |
 | `src/Observers/` | Shared observer on `created`/`updated`; skips when the content hash is unchanged |
 | `src/Jobs/ModerateContent.php` | Queued after commit (or inline when `sync`); retries with backoff |
-| `src/Contracts/`, `src/Drivers/` | `ModerationDriver` contract, `JevDriver` (Laravel HTTP client), `FakeDriver` |
+| `src/Contracts/ModerationDriver.php` | Built: `classify(ModerationRequest): Classification`, `models(): list<string>`; both throw `DriverException` |
+| `src/Drivers/DriverManager.php` | Built, `@internal`: Laravel `Manager` keyed by `jev-moderation.driver`, `extend()` for custom drivers, guards that each driver implements the contract. Singleton; `ModerationDriver` binds to its default driver. To come: `JevDriver` (Laravel HTTP client), `FakeDriver` |
+| `src/Data/ModerationRequest.php`, `src/Data/Classification.php` | Built: request is policy name, instructions, `choices` (name to description, 2 to 255), `content` (field to value), `context`; answer is choice, confidence, probabilities (`probabilityOf()`), driver, model version, input tokens, request id, latency. Values outside 0 to 1 throw |
+| `src/Exceptions/DriverException.php` | Built: `retryable()` / `permanent()`, with HTTP status and request id |
 | `src/Policies/` | Policy objects, threshold resolver, policy version hash |
 | `src/Scopes/ModeratedScope.php` | Visibility by mode and fail setting; uses the optional `moderation_status` column when present |
-| `src/Data/`, `src/Enums/`, `src/Events/` | `Classification`; `ModerationStatus` (built, `isHuman()`), `ModerationSource` (built: `jev`, `human`, `report`, `rescan`); `ContentPending`, `ContentPassed`, `ContentFlagged`, `ContentBlocked`, `ContentReported`, `ReviewResolved`, `ModerationFailed` |
+| `src/Enums/`, `src/Events/` | `ModerationStatus` (built, `isHuman()`), `ModerationSource` (built: `jev`, `human`, `report`, `rescan`); `ContentPending`, `ContentPassed`, `ContentFlagged`, `ContentBlocked`, `ContentReported`, `ReviewResolved`, `ModerationFailed` |
 | `src/Facades/JevModeration.php` | `classify()` for ad-hoc checks, `fake()` |
 | `src/Console/` | `jev-moderation:install`, `ping`, `add-column`, `rescan`, `stats` |
 | `tests/` | Pest + Testbench; `tests/Arch/` enforces strict types, no debug calls; `tests/Fixtures/Responses/jev/` recorded Jev responses (synthetic content) |
