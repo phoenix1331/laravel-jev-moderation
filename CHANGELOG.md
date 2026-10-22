@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `moderation_decisions` migration, published with the `jev-moderation-migrations` tag: polymorphic and append-only, with the answering Jev version, category, confidence, content hash and reviewer, portable across SQLite, PostgreSQL, MySQL and MariaDB
 - `ModerationStatus` and `ModerationSource` enums
 - `ModerationDriver` contract with `classify()` and `models()`, `ModerationRequest` and `Classification` data objects, and `DriverException` with a `retryable` flag; custom drivers register through the driver manager's `extend()`
+- `JevDriver` (driver name `jev`): one Choice question per check through TypeSafe's `POST /v1/systemone`, the answering Jev version and request id on every classification, retryable failures (`429`, `529`, `5xx`, timeouts, with `retry-after`) separated from permanent ones, and trimming to the context budget, context first
+- `drivers.jev` config (`JEV_API_KEY`, `JEV_MODEL`, `JEV_BASE_URL`, `JEV_TIMEOUT`) and `max_context_tokens` (`JEV_MODERATION_MAX_CONTEXT_TOKENS`, default 24000)
 - `FakeDriver` (driver name `fake`) for tests and demos: passes everything by default, `classifyAs()`, `classifyUsing()`, `failWith()`, one-off `push()` and `pushFailure()` answers, and `assertClassified()`, `assertNotClassified()`, `assertClassifiedTimes()`, `assertNothingClassified()`
 - `driver` config option (`JEV_MODERATION_DRIVER`, default `jev`)
 - Decisions are append-only: saving, deleting, or mass updating or deleting an existing decision throws `DecisionsAreAppendOnly`

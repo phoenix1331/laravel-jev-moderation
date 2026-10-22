@@ -16,6 +16,7 @@ final readonly class Classification
     /**
      * @param  array<string, float>  $probabilities  choice name to probability, 0 to 1
      * @param  string|null  $model  the versioned model that answered, e.g. jev-1.14.0
+     * @param  bool  $truncated  whether content or context was trimmed to fit the context budget
      */
     public function __construct(
         public string $choice,
@@ -26,6 +27,7 @@ final readonly class Classification
         public ?int $inputTokens = null,
         public ?string $requestId = null,
         public int $latencyMs = 0,
+        public bool $truncated = false,
     ) {
         if ($choice === '') {
             throw new InvalidArgumentException('A classification needs a choice.');

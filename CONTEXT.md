@@ -15,12 +15,12 @@ This is a Composer **package**, not a Laravel app. There is no `app/`, no UI, no
 
 ## Architecture at a glance
 
-Built so far: service provider, config, migration, `ModerationDecision`, enums, factory, driver contract, manager, data objects, `FakeDriver`. The rest is the target layout from the brief.
+Built so far: service provider, config, migration, `ModerationDecision`, enums, factory, driver contract, manager, data objects, `FakeDriver`, `JevDriver`. The rest is the target layout from the brief.
 
 | Path | Role |
 |---|---|
 | `src/JevModerationServiceProvider.php` | Merges and publishes `config/jev-moderation.php` (tag `jev-moderation-config`); migrations (tag `jev-moderation-migrations`), commands |
-| `config/jev-moderation.php` | Built: `enabled`, `driver`. To come: drivers, mode (`pre`/`post`), fail (`open`/`closed`), queue, `sync`, `store_content`, `max_context_tokens`, policies |
+| `config/jev-moderation.php` | Built: `enabled`, `driver`, `drivers.jev` (key, model, base URL, timeout), `max_context_tokens`. To come: mode (`pre`/`post`), fail (`open`/`closed`), queue, `sync`, `store_content`, policies |
 | `database/migrations/` | `moderation_decisions`: polymorphic, append-only, schema builder only, explicit index names under 64 characters; morph key type follows `Schema::morphUsingUuids()`/`morphUsingUlids()` |
 | `src/Models/ModerationDecision.php` | `@internal` Eloquent model: enum, float and array casts, `moderatable()` and `reviewedBy()` morphs |
 | `src/Models/Builders/DecisionBuilder.php` | `@internal` builder returned by `newEloquentBuilder()`: `update`, `upsert`, `touch`, `increment`/`decrement`(`Each`), `delete`, `forceDelete` throw `Exceptions\DecisionsAreAppendOnly` |
@@ -30,10 +30,11 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | `src/Observers/` | Shared observer on `created`/`updated`; skips when the content hash is unchanged |
 | `src/Jobs/ModerateContent.php` | Queued after commit (or inline when `sync`); retries with backoff |
 | `src/Contracts/ModerationDriver.php` | Built: `classify(ModerationRequest): Classification`, `models(): list<string>`; both throw `DriverException` |
-| `src/Drivers/DriverManager.php` | Built, `@internal`: Laravel `Manager` keyed by `jev-moderation.driver`, `extend()` for custom drivers, guards that each driver implements the contract. Singleton; `ModerationDriver` binds to its default driver. To come: `JevDriver` (Laravel HTTP client) |
+| `src/Drivers/DriverManager.php` | Built, `@internal`: Laravel `Manager` keyed by `jev-moderation.driver`, `extend()` for custom drivers, guards that each driver implements the contract. Singleton; `ModerationDriver` binds to its default driver. Typed config guards throw on an empty model or base URL and a non-positive timeout or budget |
+| `src/Drivers/JevDriver.php` | Built, `@internal`: Laravel HTTP client, bearer key, no internal retries; `state: {content, context?}` with one `choice` question keyed `moderation` (empty descriptions sent as `null`); answer validated field by field, anything else is a permanent "does not understand"; errors by status (`429`/`529`/`5xx`/connection retryable with `retry-after`, the rest permanent, auth errors hint at `JEV_API_KEY`); context budget at 3 bytes per token, context trimmed first, then content fields by the same share, `mb_strcut` so UTF-8 survives; `models()` from `GET /models` |
 | `src/Drivers/FakeDriver.php` | Built, public test API: no setup answers the request's `safeChoice` (else first choice) at confidence 1; `classifyAs()` spreads probabilities with Jev's formula unless given; `classifyUsing()`, `failWith()` (retryable by default); queued `push()`/`pushFailure()` used first; records every request, failed ones too; PHPUnit `Assert` assertions |
-| `src/Data/ModerationRequest.php`, `src/Data/Classification.php` | Built: request is policy name, instructions, `choices` (name to description, 2 to 255), `content` (field to value), `context`, `safeChoice` (must be a choice; not sent to the classifier); answer is choice, confidence, probabilities (`probabilityOf()`), driver, model version, input tokens, request id, latency. Values outside 0 to 1 throw |
-| `src/Exceptions/DriverException.php` | Built: `retryable()` / `permanent()`, with HTTP status and request id |
+| `src/Data/ModerationRequest.php`, `src/Data/Classification.php` | Built: request is policy name, instructions, `choices` (name to description, 2 to 255), `content` (field to value), `context`, `safeChoice` (must be a choice; not sent to the classifier); answer is choice, confidence, probabilities (`probabilityOf()`), driver, model version, input tokens, request id, latency, `truncated`. Values outside 0 to 1 throw |
+| `src/Exceptions/DriverException.php` | Built: `retryable()` / `permanent()`, with HTTP status, request id and `retryAfter` seconds |
 | `src/Policies/` | Policy objects, threshold resolver, policy version hash |
 | `src/Scopes/ModeratedScope.php` | Visibility by mode and fail setting; uses the optional `moderation_status` column when present |
 | `src/Enums/`, `src/Events/` | `ModerationStatus` (built, `isHuman()`), `ModerationSource` (built: `jev`, `human`, `report`, `rescan`); `ContentPending`, `ContentPassed`, `ContentFlagged`, `ContentBlocked`, `ContentReported`, `ReviewResolved`, `ModerationFailed` |
@@ -59,7 +60,8 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | Answering Jev version in a `model` column | Aliases move without notice (`jev-latest` answered as `jev-1.14.0` while the docs said 1.13); calibration groups Jev-vs-human agreement by version |
 | Content sent as named fields (`state: {content: {...}, context}`) | TypeSafe recommends named state; the hash covers the same structure that is sent |
 | Policy `choices` are a name-to-description map, safe choice last | Descriptions are sent to the model; `jev-1.13` leans towards the first option |
-| Driver errors are retryable (`429`, `529`, `5xx`, timeout) or permanent (everything else) | Retrying a bad key or malformed policy burns attempts |
+| Driver errors are retryable (`429`, `529`, `5xx`, timeout) or permanent (everything else); the driver never retries itself | Retrying a bad key or malformed policy burns attempts; retrying inside the driver would block a queue worker, so backoff belongs to the job |
+| No tokeniser; 3 bytes per token budget | Runtime deps are `illuminate/*` only and Jev's tokeniser is unpublished; `400 max_tokens_exceeded` still fails permanently, so the estimate only has to be safe |
 | Polymorphic, append-only `moderation_decisions` table, enforced by a custom builder rather than model events | No changes to the developer's tables to start; human decisions add rows rather than overwrite Jev's, giving an audit trail and Jev-vs-human data for calibration. Model `save()`/`delete()` run through the builder too, so one guard covers mass writes that skip events. Raw `DB::table()` writes and `truncate()` are not guarded |
 | Optional denormalised `moderation_status` column | Fast pre-moderation queries on hot tables without a `whereHas` |
 | User reports use the same pipeline (`flagForReview()`) | One decision history and one review queue |

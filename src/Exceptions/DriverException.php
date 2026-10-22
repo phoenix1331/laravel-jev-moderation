@@ -20,13 +20,17 @@ final class DriverException extends RuntimeException
         public readonly ?int $status = null,
         public readonly ?string $requestId = null,
         ?Throwable $previous = null,
+        public readonly ?int $retryAfter = null,
     ) {
         parent::__construct($message, 0, $previous);
     }
 
-    public static function retryable(string $message, ?int $status = null, ?string $requestId = null, ?Throwable $previous = null): self
+    /**
+     * @param  int|null  $retryAfter  seconds the service asked us to wait, from a retry-after header
+     */
+    public static function retryable(string $message, ?int $status = null, ?string $requestId = null, ?Throwable $previous = null, ?int $retryAfter = null): self
     {
-        return new self($message, true, $status, $requestId, $previous);
+        return new self($message, true, $status, $requestId, $previous, $retryAfter);
     }
 
     public static function permanent(string $message, ?int $status = null, ?string $requestId = null, ?Throwable $previous = null): self

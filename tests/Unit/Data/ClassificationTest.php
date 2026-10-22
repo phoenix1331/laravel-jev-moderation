@@ -37,7 +37,8 @@ it('defaults the optional details', function (): void {
     expect($result->model)->toBeNull()
         ->and($result->inputTokens)->toBeNull()
         ->and($result->requestId)->toBeNull()
-        ->and($result->latencyMs)->toBe(0);
+        ->and($result->latencyMs)->toBe(0)
+        ->and($result->truncated)->toBeFalse();
 });
 
 it('accepts the bounds 0 and 1', function (): void {
