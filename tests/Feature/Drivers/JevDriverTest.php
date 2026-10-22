@@ -13,20 +13,6 @@ use Phoenix1331\JevModeration\Exceptions\DriverException;
 const JEV_URL = 'https://api.typesafe.ai/v1/systemone';
 
 /**
- * A recorded response from tests/Fixtures/Responses/jev.
- *
- * @return array<string, mixed>
- */
-function jevFixture(string $name): array
-{
-    $decoded = json_decode((string) file_get_contents(__DIR__."/../../Fixtures/Responses/jev/{$name}.json"), true, flags: JSON_THROW_ON_ERROR);
-
-    expect($decoded)->toBeArray();
-
-    return $decoded;
-}
-
-/**
  * @param  array<string, mixed>|string|null  $body
  * @param  array<string, string>  $headers
  */

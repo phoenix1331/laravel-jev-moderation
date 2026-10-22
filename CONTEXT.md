@@ -15,12 +15,12 @@ This is a Composer **package**, not a Laravel app. There is no `app/`, no UI, no
 
 ## Architecture at a glance
 
-Built so far: service provider, config, migration, `ModerationDecision`, enums, factory, driver contract, manager, data objects, `FakeDriver`, `JevDriver`. The rest is the target layout from the brief.
+Built so far: service provider, config, migration, `ModerationDecision`, enums, factory, driver contract, manager, data objects, `FakeDriver`, `JevDriver`, policies, presets, threshold resolver. The rest is the target layout from the brief.
 
 | Path | Role |
 |---|---|
 | `src/JevModerationServiceProvider.php` | Merges and publishes `config/jev-moderation.php` (tag `jev-moderation-config`); migrations (tag `jev-moderation-migrations`), commands |
-| `config/jev-moderation.php` | Built: `enabled`, `driver`, `drivers.jev` (key, model, base URL, timeout), `max_context_tokens`. To come: mode (`pre`/`post`), fail (`open`/`closed`), queue, `sync`, `store_content`, policies |
+| `config/jev-moderation.php` | Built: `enabled`, `driver`, `drivers.jev` (key, model, base URL, timeout), `max_context_tokens`, `policy`, `policies` (`community`, `chat`, `strict`). To come: mode (`pre`/`post`), fail (`open`/`closed`), queue, `sync`, `store_content` |
 | `database/migrations/` | `moderation_decisions`: polymorphic, append-only, schema builder only, explicit index names under 64 characters; morph key type follows `Schema::morphUsingUuids()`/`morphUsingUlids()` |
 | `src/Models/ModerationDecision.php` | `@internal` Eloquent model: enum, float and array casts, `moderatable()` and `reviewedBy()` morphs |
 | `src/Models/Builders/DecisionBuilder.php` | `@internal` builder returned by `newEloquentBuilder()`: `update`, `upsert`, `touch`, `increment`/`decrement`(`Each`), `delete`, `forceDelete` throw `Exceptions\DecisionsAreAppendOnly` |
@@ -35,7 +35,10 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | `src/Drivers/FakeDriver.php` | Built, public test API: no setup answers the request's `safeChoice` (else first choice) at confidence 1; `classifyAs()` spreads probabilities with Jev's formula unless given; `classifyUsing()`, `failWith()` (retryable by default); queued `push()`/`pushFailure()` used first; records every request, failed ones too; PHPUnit `Assert` assertions |
 | `src/Data/ModerationRequest.php`, `src/Data/Classification.php` | Built: request is policy name, instructions, `choices` (name to description, 2 to 255), `content` (field to value), `context`, `safeChoice` (must be a choice; not sent to the classifier); answer is choice, confidence, probabilities (`probabilityOf()`), driver, model version, input tokens, request id, latency, `truncated`. Values outside 0 to 1 throw |
 | `src/Exceptions/DriverException.php` | Built: `retryable()` / `permanent()`, with HTTP status, request id and `retryAfter` seconds |
-| `src/Policies/` | Policy objects, threshold resolver, policy version hash |
+| `src/Data/Policy.php`, `src/Data/CategoryRule.php` | Built: `Policy::fromConfig()` guards every value and names the policy in errors; choices as a map or a list of names; rules only for offered, non-safe choices; `version` is sha256 of question, choices (in order), safe choice, thresholds and floor, not the name; `request()` builds the `ModerationRequest`. Rule thresholds 0 to 1, block not below review |
+| `src/Policies/PolicyRegistry.php` | Built, `@internal`: `get(?name)`, `names()`, `defaultName()` from `jev-moderation.policy`; parses on every call so runtime config changes apply |
+| `src/Policies/ThresholdResolver.php` | Built, `@internal`: every rule checked against `probabilityOf(category)`; block beats flag, then higher probability; nothing over a threshold and `confidence < uncertain_below` flags (`LowConfidence`); else passes with the top choice |
+| `src/Data/Verdict.php`, `src/Enums/VerdictReason.php` | Built: status, reason (`clear`, `review_threshold`, `block_threshold`, `low_confidence`), deciding category and its probability |
 | `src/Scopes/ModeratedScope.php` | Visibility by mode and fail setting; uses the optional `moderation_status` column when present |
 | `src/Enums/`, `src/Events/` | `ModerationStatus` (built, `isHuman()`), `ModerationSource` (built: `jev`, `human`, `report`, `rescan`); `ContentPending`, `ContentPassed`, `ContentFlagged`, `ContentBlocked`, `ContentReported`, `ReviewResolved`, `ModerationFailed` |
 | `src/Facades/JevModeration.php` | `classify()` for ad-hoc checks, `fake()` |
@@ -60,6 +63,8 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | Answering Jev version in a `model` column | Aliases move without notice (`jev-latest` answered as `jev-1.14.0` while the docs said 1.13); calibration groups Jev-vs-human agreement by version |
 | Content sent as named fields (`state: {content: {...}, context}`) | TypeSafe recommends named state; the hash covers the same structure that is sent |
 | Policy `choices` are a name-to-description map, safe choice last | Descriptions are sent to the model; `jev-1.13` leans towards the first option |
+| Presets: `community` (forums, floor 0.30), `chat` (higher review thresholds, no floor so the queue stays usable), `strict` (young people: low thresholds, floor 0.50, `self_harm` flags but never auto-blocks) | Starting points, not measured yet; the light accuracy eval tunes them and records the numbers here |
+| A confidence exactly at `uncertain_below` passes; a probability exactly at a threshold acts | Thresholds are "at or above" per the brief; the floor is "below" so the two never overlap at one value |
 | Driver errors are retryable (`429`, `529`, `5xx`, timeout) or permanent (everything else); the driver never retries itself | Retrying a bad key or malformed policy burns attempts; retrying inside the driver would block a queue worker, so backoff belongs to the job |
 | No tokeniser; 3 bytes per token budget | Runtime deps are `illuminate/*` only and Jev's tokeniser is unpublished; `400 max_tokens_exceeded` still fails permanently, so the estimate only has to be safe |
 | Polymorphic, append-only `moderation_decisions` table, enforced by a custom builder rather than model events | No changes to the developer's tables to start; human decisions add rows rather than overwrite Jev's, giving an audit trail and Jev-vs-human data for calibration. Model `save()`/`delete()` run through the builder too, so one guard covers mass writes that skip events. Raw `DB::table()` writes and `truncate()` are not guarded |

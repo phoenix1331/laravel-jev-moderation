@@ -61,4 +61,113 @@ return [
 
     'max_context_tokens' => (int) env('JEV_MODERATION_MAX_CONTEXT_TOKENS', 24000),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Default Policy
+    |--------------------------------------------------------------------------
+    |
+    | Used by models whose #[Moderate] attribute names no policy.
+    |
+    */
+
+    'policy' => env('JEV_MODERATION_POLICY', 'community'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Policies
+    |--------------------------------------------------------------------------
+    |
+    | Each policy asks Jev one question with a fixed set of choices and gets
+    | back a probability for every choice. Thresholds compare a category's
+    | probability, and a probability equal to a threshold counts as above:
+    |
+    |   review_above  flag for a human (keep it low: a person checks it)
+    |   block_above   block automatically (keep it high: no one checks it)
+    |
+    | Every category with an action is checked, not only Jev's top choice,
+    | and the strongest action wins. uncertain_below flags any answer whose
+    | confidence (how decisive Jev was) falls below it; null turns it off.
+    |
+    | Choice descriptions are sent to Jev and are the main accuracy lever.
+    | The safe choice goes last: Jev leans slightly towards the first option.
+    | Changing anything here changes the policy version stored on decisions;
+    | jev-moderation:rescan re-checks content after a change.
+    |
+    | The presets are starting points. Measure them on your own content.
+    |
+    */
+
+    'policies' => [
+
+        'community' => [
+            'question' => 'Classify this user-generated forum content in `content`. Use `context`, if present, only to understand it.',
+            'choices' => [
+                'spam' => 'Advertising, link farming, scams or repeated promotional content',
+                'harassment' => 'Insults, threats, intimidation or targeted abuse of a person',
+                'hate' => 'Attacks or slurs against people for a protected characteristic such as race, religion, gender, sexuality or disability',
+                'personal_data' => "Someone's home address, phone number, email address, financial details or other private information",
+                'off_topic' => 'Unrelated to the discussion it was posted in',
+                'fine' => 'Acceptable content that breaks none of these rules, including disagreement and criticism of ideas',
+            ],
+            'safe_choice' => 'fine',
+            'actions' => [
+                'spam' => ['review_above' => 0.50, 'block_above' => 0.90],
+                'harassment' => ['review_above' => 0.40, 'block_above' => 0.95],
+                'hate' => ['review_above' => 0.30, 'block_above' => 0.95],
+                'personal_data' => ['review_above' => 0.40],
+                'off_topic' => ['review_above' => 0.80],
+            ],
+            'uncertain_below' => 0.30,
+        ],
+
+        'chat' => [
+            'question' => 'Classify this chat message in `content`. Use `context`, if present, only to understand it.',
+            'choices' => [
+                'spam' => 'Advertising, scams, phishing links or repeated promotional messages',
+                'harassment' => 'Insults, threats, intimidation or targeted abuse of a person',
+                'hate' => 'Attacks or slurs against people for a protected characteristic such as race, religion, gender, sexuality or disability',
+                'sexual' => 'Sexually explicit content or unwanted sexual remarks',
+                'personal_data' => "Someone's home address, phone number, email address, financial details or other private information",
+                'fine' => 'Acceptable message that breaks none of these rules, including banter and casual language',
+            ],
+            'safe_choice' => 'fine',
+            'actions' => [
+                'spam' => ['review_above' => 0.60, 'block_above' => 0.95],
+                'harassment' => ['review_above' => 0.50, 'block_above' => 0.95],
+                'hate' => ['review_above' => 0.40, 'block_above' => 0.95],
+                'sexual' => ['review_above' => 0.50, 'block_above' => 0.95],
+                'personal_data' => ['review_above' => 0.50],
+            ],
+            // Chat moves fast; flag only on thresholds so the queue stays usable.
+            'uncertain_below' => null,
+        ],
+
+        'strict' => [
+            'question' => 'Classify this content in `content`, posted on a platform for young people. Use `context`, if present, only to understand it.',
+            'choices' => [
+                'spam' => 'Advertising, scams, phishing links or repeated promotional content',
+                'harassment' => 'Insults, threats, intimidation, bullying or targeted abuse of a person',
+                'hate' => 'Attacks or slurs against people for a protected characteristic such as race, religion, gender, sexuality or disability',
+                'sexual' => 'Sexual content of any kind, including innuendo',
+                'self_harm' => 'Mentions of self-harm, suicide or eating disorders, including asking for help',
+                'personal_data' => "Anyone's home address, phone number, email address, school, social media handle or other identifying details",
+                'off_topic' => 'Unrelated to the discussion it was posted in',
+                'fine' => 'Acceptable content that breaks none of these rules',
+            ],
+            'safe_choice' => 'fine',
+            'actions' => [
+                'spam' => ['review_above' => 0.40, 'block_above' => 0.85],
+                'harassment' => ['review_above' => 0.25, 'block_above' => 0.85],
+                'hate' => ['review_above' => 0.20, 'block_above' => 0.85],
+                'sexual' => ['review_above' => 0.20, 'block_above' => 0.85],
+                // Never auto-block: a person in distress needs a human, not a removed post.
+                'self_harm' => ['review_above' => 0.15],
+                'personal_data' => ['review_above' => 0.25, 'block_above' => 0.90],
+                'off_topic' => ['review_above' => 0.70],
+            ],
+            'uncertain_below' => 0.50,
+        ],
+
+    ],
+
 ];

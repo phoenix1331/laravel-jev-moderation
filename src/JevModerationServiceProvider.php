@@ -8,6 +8,8 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use Phoenix1331\JevModeration\Contracts\ModerationDriver;
 use Phoenix1331\JevModeration\Drivers\DriverManager;
+use Phoenix1331\JevModeration\Policies\PolicyRegistry;
+use Phoenix1331\JevModeration\Policies\ThresholdResolver;
 
 class JevModerationServiceProvider extends ServiceProvider
 {
@@ -16,6 +18,8 @@ class JevModerationServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/jev-moderation.php', 'jev-moderation');
 
         $this->app->singleton(DriverManager::class);
+        $this->app->singleton(PolicyRegistry::class);
+        $this->app->singleton(ThresholdResolver::class);
         $this->app->bind(ModerationDriver::class, static fn (Application $app): ModerationDriver => $app->make(DriverManager::class)->driver());
     }
 
