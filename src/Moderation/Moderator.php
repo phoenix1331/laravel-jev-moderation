@@ -53,6 +53,21 @@ final readonly class Moderator
             return null;
         }
 
+        return $this->submit($subject);
+    }
+
+    /**
+     * Record a pending decision and start the check, whether or not the
+     * content changed. Used by saves and moderateNow().
+     *
+     * @return ModerationDecision|null null when disabled or there is nothing to read
+     */
+    public function submit(ModerationSubject $subject): ?ModerationDecision
+    {
+        if ($this->config->get('jev-moderation.enabled', true) === false || $subject->content === []) {
+            return null;
+        }
+
         $policy = $this->policies->get($subject->policy);
 
         $pending = ModerationDecision::query()->create([

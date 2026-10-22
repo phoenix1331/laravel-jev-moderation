@@ -17,6 +17,7 @@ use Phoenix1331\JevModeration\Enums\ModerationStatus;
 use Phoenix1331\JevModeration\Models\ModerationDecision;
 use Phoenix1331\JevModeration\Moderation\ModerationSubject;
 use Phoenix1331\JevModeration\Moderation\Moderator;
+use Phoenix1331\JevModeration\Moderation\Reviewer;
 use Phoenix1331\JevModeration\Moderation\Visibility;
 use Phoenix1331\JevModeration\Policies\PolicyRegistry;
 use Phoenix1331\JevModeration\Scopes\ModeratedScope;
@@ -103,6 +104,42 @@ trait Moderatable
     public function isVisible(): bool
     {
         return Visibility::fromConfig(app(Repository::class))->allows($this->moderationStatus());
+    }
+
+    /**
+     * A user report: the content waits for a human. Content already blocked
+     * or rejected stays removed; the report is still recorded.
+     */
+    public function flagForReview(string $reason, ?Model $reporter = null): ModerationDecision
+    {
+        return app(Reviewer::class)->report($this->toModerationSubject(), $reason, $reporter);
+    }
+
+    /**
+     * A moderator overrides the flag or block: the content is shown.
+     */
+    public function approve(?Model $moderator = null, ?string $note = null): ModerationDecision
+    {
+        return app(Reviewer::class)->resolve($this->toModerationSubject(), ModerationStatus::Approved, $moderator, $note);
+    }
+
+    /**
+     * A moderator confirms the flag or block: the content is removed.
+     */
+    public function reject(?Model $moderator = null, ?string $note = null): ModerationDecision
+    {
+        return app(Reviewer::class)->resolve($this->toModerationSubject(), ModerationStatus::Rejected, $moderator, $note);
+    }
+
+    /**
+     * Check again now, even if the content has not changed (e.g. after a
+     * policy change). Queued like a save, or inline with sync.
+     *
+     * @return ModerationDecision|null the pending decision; null when disabled or there is nothing to read
+     */
+    public function moderateNow(): ?ModerationDecision
+    {
+        return app(Moderator::class)->submit($this->toModerationSubject());
     }
 
     /**

@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Queued `ModerateContent` job, dispatched after the saving transaction commits: classifies the pending decision and appends a `passed`, `flagged` or `blocked` result with the deciding category and its probability, the answering Jev version, and Jev's full answer in `meta`
 - Retries for rate limits, overload and timeouts with exponential backoff or Jev's `retry-after`; permanent failures fail at once; a check that gives up records a `failed` decision
 - Pre- and post-moderation (`mode`, `JEV_MODERATION_MODE`, default `post`) and fail open or closed for failed checks (`fail`, `JEV_MODERATION_FAIL`, default `open`), applied by a global scope; models never checked stay visible
+- `flagForReview($reason, $reporter)` for user reports, `approve($moderator, $note)` and `reject($moderator, $note)` for moderators, and `moderateNow()` to check again; each adds a decision and never changes Jev's. Reports on blocked or rejected content are recorded without bringing it back into view
+- `ContentReported` and `ReviewResolved` events
 - `withoutModeration()`, `onlyFlagged()`, `onlyBlocked()` and `whereModerationStatus()` query scopes, and `moderationStatus()`, `isFlagged()`, `isBlocked()` and `isVisible()` on the model
 - `queue`, `connection`, `sync`, `tries` and `backoff` config options (`JEV_MODERATION_QUEUE`, `JEV_MODERATION_QUEUE_CONNECTION`, `JEV_MODERATION_SYNC`, `JEV_MODERATION_TRIES`, `JEV_MODERATION_BACKOFF`); `sync` classifies inline without retries
 - `ContentPending`, `ContentPassed`, `ContentFlagged`, `ContentBlocked` and `ModerationFailed` events, each with the model and the decision, serialisable for queued listeners
