@@ -10,7 +10,7 @@ use Phoenix1331\JevModeration\Exceptions\DriverException;
 
 /**
  * Classifies content against one policy question. Implement it to swap Jev
- * for another classifier, and register it with the driver manager's extend().
+ * for another classifier, and register it with JevModeration::extend().
  */
 interface ModerationDriver
 {

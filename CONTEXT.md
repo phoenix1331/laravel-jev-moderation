@@ -15,7 +15,7 @@ This is a Composer **package**, not a Laravel app. There is no `app/`, no UI, no
 
 ## Architecture at a glance
 
-Built so far: service provider, config, migration, `ModerationDecision`, enums, factory, driver contract, manager, data objects, `FakeDriver`, `JevDriver`, policies, presets, threshold resolver, accuracy suite, `Moderatable` trait and `#[Moderate]`, pending decisions, `ModerateContent` job, result decisions, events, visibility scope and modes, reports and reviews. The rest is the target layout from the brief.
+Built so far: service provider, config, migration, `ModerationDecision`, enums, factory, driver contract, manager, data objects, `FakeDriver`, `JevDriver`, policies, presets, threshold resolver, accuracy suite, `Moderatable` trait and `#[Moderate]`, pending decisions, `ModerateContent` job, result decisions, events, visibility scope and modes, reports and reviews, facade and public API tests. The rest is the target layout from the brief.
 
 | Path | Role |
 |---|---|
@@ -44,7 +44,9 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | `src/Scopes/ModeratedScope.php` | Built, `@internal`: added by the trait; `whereDoesntHave(moderationDecisions) or whereHas(latestModeration, status in visible)`, visible set read from config per query. To come: use the optional `moderation_status` column when present |
 | `src/Moderation/Visibility.php`, `src/Enums/ModerationMode.php`, `src/Enums/FailMode.php` | Built: post shows pending, passed, flagged, approved; pre shows passed, approved; `fail: open` adds failed; no decision is always visible. Unknown config values throw naming the env var |
 | `src/Enums/`, `src/Events/` | `ModerationStatus` (built, `isHuman()`), `ModerationSource` (built: `jev`, `human`, `report`, `rescan`); events built: `ContentPending`, `ContentPassed`, `ContentFlagged`, `ContentBlocked` (model, decision), `ModerationFailed` (model, failed decision, reason, retryable); final readonly with `SerializesModels`. `ContentReported`, `ReviewResolved` (model, decision) |
-| `src/Facades/JevModeration.php` | `classify()` for ad-hoc checks, `fake()` |
+| `src/Facades/JevModeration.php`, `src/JevModerationManager.php` | Built: facade (alias in `extra.laravel.aliases`) over the singleton manager: `classify(string\|array, ?policy, ?context): CheckResult` (records nothing, throws `DriverException`), `policy()`, `policies()`, `extend()`. Static `fake()` sets `jev-moderation.driver` to `fake`, forgets cached drivers once, returns the shared `FakeDriver` |
+| `src/Data/CheckResult.php` | Built: policy name, `Verdict`, `Classification`; `status()`, `passed()`, `flagged()`, `blocked()` |
+| `tests/Arch/PublicApiTest.php` | `@internal` exactly on `Jobs`, `Models\Builders`, `Moderation`, `Policies`, `Scopes`, `DriverManager`, `JevDriver`; facade `@method` names and parameters equal the manager's public methods; plain-data classes return no Eloquent types; interfaces only in `Contracts`; headless (no Filament, Livewire, views, routes); alias registered. Mutation-checked |
 | `src/Console/` | `jev-moderation:install`, `ping`, `add-column`, `rescan`, `stats` |
 | `tests/Accuracy/` | Live Jev suite, outside the default `phpunit.xml` suites: `Corpus/{preset}.php` (53 synthetic samples with `expected` and `acceptable` outcomes), `Support/` (`Corpus`, `Sample`, `AccuracyRunner` with retry on retryable errors, `AccuracyResult` scoring exact/acceptable/wrong/missed/wrongly blocked/over-flagged, `AccuracyReport` writing `docs/accuracy.md`). Harness and corpus validity tested in the default suite with `FakeDriver` (`tests/Unit/Accuracy/`) |
 | `tests/` | Pest + Testbench; `tests/Arch/` enforces strict types, no debug calls; `tests/Fixtures/Responses/jev/` recorded Jev responses (synthetic content) |
@@ -82,6 +84,8 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | A report supersedes a check still queued | The pending row is no longer latest, so the check is skipped; a human sees it anyway |
 | `reviewed_by` holds the reporter on reports and the moderator on reviews; `source` tells them apart | One morph pair, no schema change |
 | Reports and reviews work while `enabled` is off | They are explicit calls; `enabled` only stops automatic checks |
+| Public API = everything not `@internal`, enforced by `tests/Arch/PublicApiTest.php` | SemVer needs a deliberate boundary; the test fails when a class crosses it without the list being updated |
+| `JevModeration::fake()` changes config rather than swapping the facade root | Saves, queued jobs and `classify()` all resolve the driver through `DriverManager`, so one switch covers every path |
 | Emptied content records nothing | Nothing to classify; the earlier decision stands (a flagged post blanked by its author stays flagged) |
 | Per-category `review_above` and optional `block_above`, compared with `probabilities[category]` for every non-safe category | High threshold for irreversible actions, low threshold for "send to a human"; equal to a threshold counts as above. Jev's `confidence` measures distribution sharpness and shifts with the number of choices, so it only drives the policy's `uncertain_below` floor. A recorded answer with `fine` on top and `harassment` at 0.44 is why every category is checked |
 | Answering Jev version in a `model` column | Aliases move without notice (`jev-latest` answered as `jev-1.14.0` while the docs said 1.13); calibration groups Jev-vs-human agreement by version |

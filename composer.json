@@ -58,7 +58,10 @@
         "laravel": {
             "providers": [
                 "Phoenix1331\\JevModeration\\JevModerationServiceProvider"
-            ]
+            ],
+            "aliases": {
+                "JevModeration": "Phoenix1331\\JevModeration\\Facades\\JevModeration"
+            }
         }
     },
     "scripts": {
