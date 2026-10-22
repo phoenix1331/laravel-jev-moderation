@@ -1,0 +1,5 @@
+{
+    "detail": [
+        {"loc": ["body", "questions", "moderation", "criteria"], "msg": "Dictionary should have at least 1 item after validation, not 0", "type": "too_short", "input": {}}
+    ]
+}

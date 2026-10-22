@@ -1,0 +1,12 @@
+{
+    "model": "jev-1.13.0",
+    "answers": {
+        "moderation": {
+            "type": "choice",
+            "choice": "fine",
+            "confidence": 0.988,
+            "probabilities": {"fine": 0.99, "spam": 0.0, "harassment": 0.0, "hate": 0.0, "personal_data": 0.01, "off_topic": 0.0}
+        }
+    },
+    "usage": {"input_tokens": 198, "output_tokens": 18}
+}

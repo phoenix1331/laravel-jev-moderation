@@ -31,7 +31,7 @@ Only the service provider and config exist so far. The rest is the target layout
 | `src/Data/`, `src/Enums/`, `src/Events/` | `Classification`, `ModerationStatus`, `ModerationSource`; `ContentPending`, `ContentPassed`, `ContentFlagged`, `ContentBlocked`, `ContentReported`, `ReviewResolved`, `ModerationFailed` |
 | `src/Facades/JevModeration.php` | `classify()` for ad-hoc checks, `fake()` |
 | `src/Console/` | `jev-moderation:install`, `ping`, `add-column`, `rescan`, `stats` |
-| `tests/` | Pest + Testbench; `tests/Arch/` enforces strict types, no debug calls; `tests/Fixtures/Responses/jev/` recorded Jev responses |
+| `tests/` | Pest + Testbench; `tests/Arch/` enforces strict types, no debug calls; `tests/Fixtures/Responses/jev/` Jev responses (verified auth errors, schema-built answers) |
 | `test-app/` | Fresh Laravel 13 app, symlinked path repository to `../`; gitignored and export-ignored |
 | `art/` | VHS tapes (`art/tapes/*.tape`) and GIFs; export-ignored |
 | `docs/` | GitHub Pages site; export-ignored |
@@ -40,7 +40,7 @@ Only the service provider and config exist so far. The rest is the target layout
 
 | Service | Use |
 |---|---|
-| Jev (TypeSafe AI) | Classification of moderated content. Early access: endpoint, payload and response shapes are unverified until the API spike (`.claude/docs/jev-api-spike.md`). Never called in the default test suite |
+| Jev (TypeSafe AI) `POST /v1/systemone`, `GET /v1/models` | One `choice` question per check: `criteria` map in, `choice`, `confidence` and full `probabilities` out. Bearer key; `x-typesafe-request-id` on every response. Detail and open decisions: `.claude/docs/jev-api-spike.md`. Never called in the default test suite |
 
 ## Decisions
 
