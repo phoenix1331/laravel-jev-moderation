@@ -26,6 +26,11 @@ final class DriverManager extends Manager
         return $driver;
     }
 
+    public function createFakeDriver(): FakeDriver
+    {
+        return new FakeDriver;
+    }
+
     /**
      * @param  string|null  $driver
      */

@@ -15,7 +15,7 @@ This is a Composer **package**, not a Laravel app. There is no `app/`, no UI, no
 
 ## Architecture at a glance
 
-Built so far: service provider, config, migration, `ModerationDecision`, enums, factory, driver contract, manager and data objects. The rest is the target layout from the brief.
+Built so far: service provider, config, migration, `ModerationDecision`, enums, factory, driver contract, manager, data objects, `FakeDriver`. The rest is the target layout from the brief.
 
 | Path | Role |
 |---|---|
@@ -30,8 +30,9 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | `src/Observers/` | Shared observer on `created`/`updated`; skips when the content hash is unchanged |
 | `src/Jobs/ModerateContent.php` | Queued after commit (or inline when `sync`); retries with backoff |
 | `src/Contracts/ModerationDriver.php` | Built: `classify(ModerationRequest): Classification`, `models(): list<string>`; both throw `DriverException` |
-| `src/Drivers/DriverManager.php` | Built, `@internal`: Laravel `Manager` keyed by `jev-moderation.driver`, `extend()` for custom drivers, guards that each driver implements the contract. Singleton; `ModerationDriver` binds to its default driver. To come: `JevDriver` (Laravel HTTP client), `FakeDriver` |
-| `src/Data/ModerationRequest.php`, `src/Data/Classification.php` | Built: request is policy name, instructions, `choices` (name to description, 2 to 255), `content` (field to value), `context`; answer is choice, confidence, probabilities (`probabilityOf()`), driver, model version, input tokens, request id, latency. Values outside 0 to 1 throw |
+| `src/Drivers/DriverManager.php` | Built, `@internal`: Laravel `Manager` keyed by `jev-moderation.driver`, `extend()` for custom drivers, guards that each driver implements the contract. Singleton; `ModerationDriver` binds to its default driver. To come: `JevDriver` (Laravel HTTP client) |
+| `src/Drivers/FakeDriver.php` | Built, public test API: no setup answers the request's `safeChoice` (else first choice) at confidence 1; `classifyAs()` spreads probabilities with Jev's formula unless given; `classifyUsing()`, `failWith()` (retryable by default); queued `push()`/`pushFailure()` used first; records every request, failed ones too; PHPUnit `Assert` assertions |
+| `src/Data/ModerationRequest.php`, `src/Data/Classification.php` | Built: request is policy name, instructions, `choices` (name to description, 2 to 255), `content` (field to value), `context`, `safeChoice` (must be a choice; not sent to the classifier); answer is choice, confidence, probabilities (`probabilityOf()`), driver, model version, input tokens, request id, latency. Values outside 0 to 1 throw |
 | `src/Exceptions/DriverException.php` | Built: `retryable()` / `permanent()`, with HTTP status and request id |
 | `src/Policies/` | Policy objects, threshold resolver, policy version hash |
 | `src/Scopes/ModeratedScope.php` | Visibility by mode and fail setting; uses the optional `moderation_status` column when present |
@@ -62,7 +63,7 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | Polymorphic, append-only `moderation_decisions` table, enforced by a custom builder rather than model events | No changes to the developer's tables to start; human decisions add rows rather than overwrite Jev's, giving an audit trail and Jev-vs-human data for calibration. Model `save()`/`delete()` run through the builder too, so one guard covers mass writes that skip events. Raw `DB::table()` writes and `truncate()` are not guarded |
 | Optional denormalised `moderation_status` column | Fast pre-moderation queries on hot tables without a `whereHas` |
 | User reports use the same pipeline (`flagForReview()`) | One decision history and one review queue |
-| Driver contract with `JevDriver` and `FakeDriver` | Jev is early access and may change; tests and consumers fake it |
+| Driver contract with `JevDriver` and `FakeDriver` | Jev is early access and may change; tests and consumers fake it. `FakeDriver` lives in `src/Drivers/`, not `src/Testing/`, because it is also a configurable driver for demos; its assertions use PHPUnit, present wherever tests run |
 | Policy version (hash of the policy array) on every decision | Threshold changes are traceable and `rescan` can target them |
 | `store_content` off by default | Content goes to a third party; locally only a sha256 hash and the decision are kept |
 | Headless | UI lives in `filament-jev-moderation` |

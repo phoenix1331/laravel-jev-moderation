@@ -23,9 +23,22 @@ it('keeps named content fields, choices and context', function (): void {
         ->and($request->context)->toBe('Thread: watches');
 });
 
-it('defaults to no context', function (): void {
-    expect((new ModerationRequest('chat', 'Classify', ['a' => '', 'b' => ''], ['message' => 'hi']))->context)->toBeNull();
+it('defaults to no context and no safe choice', function (): void {
+    $request = new ModerationRequest('chat', 'Classify', ['a' => '', 'b' => ''], ['message' => 'hi']);
+
+    expect($request->context)->toBeNull()
+        ->and($request->safeChoice)->toBeNull();
 });
+
+it('keeps a safe choice that is one of the choices', function (): void {
+    $request = new ModerationRequest('chat', 'Classify', ['spam' => '', 'fine' => ''], ['message' => 'hi'], safeChoice: 'fine');
+
+    expect($request->safeChoice)->toBe('fine');
+});
+
+it('rejects a safe choice that is not one of the choices', function (): void {
+    new ModerationRequest('chat', 'Classify', ['spam' => '', 'fine' => ''], ['message' => 'hi'], safeChoice: 'ok');
+})->throws(InvalidArgumentException::class, 'Policy [chat] safe choice [ok] is not one of its choices.');
 
 it('needs at least two choices', function (): void {
     moderationRequest(choices: ['fine' => '']);

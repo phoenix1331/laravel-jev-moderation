@@ -22,6 +22,7 @@ final readonly class ModerationRequest
      * @param  array<string, string>  $choices  choice name to description ('' when the name says it all)
      * @param  array<string, string>  $content  field name to value
      * @param  string|null  $context  surrounding material, such as the parent thread
+     * @param  string|null  $safeChoice  the choice that means nothing is wrong; not sent to the classifier
      */
     public function __construct(
         public string $policy,
@@ -29,6 +30,7 @@ final readonly class ModerationRequest
         public array $choices,
         public array $content,
         public ?string $context = null,
+        public ?string $safeChoice = null,
     ) {
         if (count($choices) < 2 || count($choices) > self::MAX_CHOICES) {
             throw new InvalidArgumentException(sprintf(
@@ -37,6 +39,10 @@ final readonly class ModerationRequest
                 self::MAX_CHOICES,
                 count($choices),
             ));
+        }
+
+        if ($safeChoice !== null && ! array_key_exists($safeChoice, $choices)) {
+            throw new InvalidArgumentException(sprintf('Policy [%s] safe choice [%s] is not one of its choices.', $policy, $safeChoice));
         }
 
         if ($content === []) {
