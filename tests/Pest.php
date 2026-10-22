@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Phoenix1331\JevModeration\Data\Classification;
 use Phoenix1331\JevModeration\Tests\TestCase;
 
-pest()->extend(TestCase::class)->in('Unit', 'Feature');
+pest()->extend(TestCase::class)->in('Unit', 'Feature', 'Accuracy');
 
 /**
  * A recorded response from tests/Fixtures/Responses/jev.

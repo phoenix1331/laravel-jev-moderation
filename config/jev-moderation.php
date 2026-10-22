@@ -113,7 +113,7 @@ return [
             'actions' => [
                 'spam' => ['review_above' => 0.50, 'block_above' => 0.90],
                 'harassment' => ['review_above' => 0.40, 'block_above' => 0.95],
-                'hate' => ['review_above' => 0.30, 'block_above' => 0.95],
+                'hate' => ['review_above' => 0.30, 'block_above' => 0.90],
                 'personal_data' => ['review_above' => 0.40],
                 'off_topic' => ['review_above' => 0.80],
             ],
@@ -128,7 +128,7 @@ return [
                 'hate' => 'Attacks or slurs against people for a protected characteristic such as race, religion, gender, sexuality or disability',
                 'sexual' => 'Sexually explicit content or unwanted sexual remarks',
                 'personal_data' => "Someone's home address, phone number, email address, financial details or other private information",
-                'fine' => 'Acceptable message that breaks none of these rules, including banter and casual language',
+                'fine' => 'Acceptable message that breaks none of these rules, including casual language, friendly banter, teasing and trash talk between players',
             ],
             'safe_choice' => 'fine',
             'actions' => [
@@ -152,7 +152,7 @@ return [
                 'self_harm' => 'Mentions of self-harm, suicide or eating disorders, including asking for help',
                 'personal_data' => "Anyone's home address, phone number, email address, school, social media handle or other identifying details",
                 'off_topic' => 'Unrelated to the discussion it was posted in',
-                'fine' => 'Acceptable content that breaks none of these rules',
+                'fine' => "Acceptable content that breaks none of these rules, including disagreement, corrections and blunt feedback about someone's work",
             ],
             'safe_choice' => 'fine',
             'actions' => [

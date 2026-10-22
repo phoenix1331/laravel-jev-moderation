@@ -4,6 +4,7 @@
          bootstrap="vendor/autoload.php"
          cacheDirectory=".phpunit.cache"
          colors="true"
+         defaultTestSuite="Arch,Unit,Feature"
 >
     <testsuites>
         <testsuite name="Arch">
@@ -14,6 +15,10 @@
         </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
+        </testsuite>
+        <!-- Live Jev calls: composer test:accuracy only. -->
+        <testsuite name="Accuracy">
+            <directory>tests/Accuracy</directory>
         </testsuite>
     </testsuites>
     <source>

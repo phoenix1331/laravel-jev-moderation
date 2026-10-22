@@ -43,10 +43,11 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | `src/Enums/`, `src/Events/` | `ModerationStatus` (built, `isHuman()`), `ModerationSource` (built: `jev`, `human`, `report`, `rescan`); `ContentPending`, `ContentPassed`, `ContentFlagged`, `ContentBlocked`, `ContentReported`, `ReviewResolved`, `ModerationFailed` |
 | `src/Facades/JevModeration.php` | `classify()` for ad-hoc checks, `fake()` |
 | `src/Console/` | `jev-moderation:install`, `ping`, `add-column`, `rescan`, `stats` |
+| `tests/Accuracy/` | Live Jev suite, outside the default `phpunit.xml` suites: `Corpus/{preset}.php` (53 synthetic samples with `expected` and `acceptable` outcomes), `Support/` (`Corpus`, `Sample`, `AccuracyRunner` with retry on retryable errors, `AccuracyResult` scoring exact/acceptable/wrong/missed/wrongly blocked/over-flagged, `AccuracyReport` writing `docs/accuracy.md`). Harness and corpus validity tested in the default suite with `FakeDriver` (`tests/Unit/Accuracy/`) |
 | `tests/` | Pest + Testbench; `tests/Arch/` enforces strict types, no debug calls; `tests/Fixtures/Responses/jev/` recorded Jev responses (synthetic content) |
 | `test-app/` | Fresh Laravel 13 app, symlinked path repository to `../`; gitignored and export-ignored |
 | `art/` | VHS tapes (`art/tapes/*.tape`) and GIFs; export-ignored |
-| `docs/` | GitHub Pages site; export-ignored |
+| `docs/` | GitHub Pages site; `docs/accuracy.md` written by the accuracy suite; export-ignored |
 
 ## External integrations
 
@@ -63,7 +64,9 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | Answering Jev version in a `model` column | Aliases move without notice (`jev-latest` answered as `jev-1.14.0` while the docs said 1.13); calibration groups Jev-vs-human agreement by version |
 | Content sent as named fields (`state: {content: {...}, context}`) | TypeSafe recommends named state; the hash covers the same structure that is sent |
 | Policy `choices` are a name-to-description map, safe choice last | Descriptions are sent to the model; `jev-1.13` leans towards the first option |
-| Presets: `community` (forums, floor 0.30), `chat` (higher review thresholds, no floor so the queue stays usable), `strict` (young people: low thresholds, floor 0.50, `self_harm` flags but never auto-blocks) | Starting points, not measured yet; the light accuracy eval tunes them and records the numbers here |
+| Presets: `community` (forums, floor 0.30, hate blocks at 0.90), `chat` (higher review thresholds, no floor so the queue stays usable), `strict` (young people: low thresholds, floor 0.50, `self_harm` flags but never auto-blocks) | Starting points, checked with the light accuracy suite (below) |
+| Light accuracy suite, run by hand (`JEV_API_KEY=... composer test:accuracy`), never in CI | Thresholds are app-specific, so no eval proves them for everyone; the suite catches presets that are plainly wrong and shows the effect of a new Jev version or a wording change. About 28k input tokens a run |
+| Accuracy on 2026-10-22, `jev-1.14.0` via `jev-latest`: first run chat/community/strict 71/71/67% exact, 93/100/93% exact or acceptable, 0 missed harmful, 1 wrongly blocked (`strict` blunt correction), 1 over-flagged (`chat` banter). Fixed with `fine` descriptions (banter; corrections and blunt feedback) and `community` hate `block_above` 0.95 to 0.90. Second run 86/75/73% exact, 100% exact or acceptable everywhere, 0 missed, 0 wrongly blocked | Descriptions, not thresholds, fixed both errors (moving a threshold from 0.68 to 0.70 for one sample would be overfitting). Caveat: 53 samples, tuned on the same set, so a sanity check rather than a benchmark. Jev is decisive (clear cases at 0.97 to 1.00), so most clear-cut "flag" samples are auto-blocked; acceptable, but apps wanting a human on every removal should raise `block_above` to 1.0 |
 | A confidence exactly at `uncertain_below` passes; a probability exactly at a threshold acts | Thresholds are "at or above" per the brief; the floor is "below" so the two never overlap at one value |
 | Driver errors are retryable (`429`, `529`, `5xx`, timeout) or permanent (everything else); the driver never retries itself | Retrying a bad key or malformed policy burns attempts; retrying inside the driver would block a queue worker, so backoff belongs to the job |
 | No tokeniser; 3 bytes per token budget | Runtime deps are `illuminate/*` only and Jev's tokeniser is unpublished; `400 max_tokens_exceeded` still fails permanently, so the estimate only has to be safe |
@@ -108,4 +111,4 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 - `osv-scanner` on the PATH for the pre-commit hook
 - `npm install` once to activate the Husky hooks
 - `composer install`, then `composer check` before pushing
-- **composer**: lint | lint:test | analyse | test | test:coverage | check
+- **composer**: lint | lint:test | analyse | test | test:coverage | test:accuracy | check

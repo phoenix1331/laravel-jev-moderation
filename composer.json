@@ -67,6 +67,7 @@
         "analyse": "phpstan analyse --memory-limit=1G",
         "test": "pest",
         "test:coverage": "pest --coverage --min=90",
+        "test:accuracy": "pest --testsuite=Accuracy",
         "check": [
             "@lint:test",
             "@analyse",
@@ -79,6 +80,7 @@
         "analyse": "Run Larastan at max level",
         "test": "Run the Pest suite",
         "test:coverage": "Run the Pest suite with the 90% coverage gate on src/",
+        "test:accuracy": "Measure the policy presets against live Jev and write docs/accuracy.md (needs JEV_API_KEY; not part of check)",
         "check": "Run style check, static analysis and the coverage gate, in that order"
     },
     "config": {
