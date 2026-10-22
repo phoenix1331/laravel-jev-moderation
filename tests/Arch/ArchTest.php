@@ -31,3 +31,7 @@ arch('events are immutable')
     ->expect('Phoenix1331\JevModeration\Events')
     ->toBeFinal()
     ->toBeReadOnly();
+
+arch('the package never logs, so content cannot leak into log files')
+    ->expect('Phoenix1331\JevModeration')
+    ->not->toUse(['Illuminate\Support\Facades\Log', 'Psr\Log\LoggerInterface', 'logger', 'info', 'error_log']);
