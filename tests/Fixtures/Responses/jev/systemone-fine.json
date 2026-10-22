@@ -1,12 +1,22 @@
 {
-    "model": "jev-1.13.0",
-    "answers": {
-        "moderation": {
-            "type": "choice",
-            "choice": "fine",
-            "confidence": 0.988,
-            "probabilities": {"fine": 0.99, "spam": 0.0, "harassment": 0.0, "hate": 0.0, "personal_data": 0.01, "off_topic": 0.0}
-        }
-    },
-    "usage": {"input_tokens": 198, "output_tokens": 18}
+  "model": "jev-1.14.0",
+  "answers": {
+    "moderation": {
+      "type": "choice",
+      "choice": "fine",
+      "confidence": 1,
+      "probabilities": {
+        "spam": 0,
+        "harassment": 0,
+        "hate": 0,
+        "personal_data": 0,
+        "off_topic": 0,
+        "fine": 1
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 491,
+    "output_tokens": 64
+  }
 }
