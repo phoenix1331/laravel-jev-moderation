@@ -59,6 +59,76 @@ jobs:
       - name: run tests
         run: vendor/bin/pest --ci
 
+  databases:
+    # The package owns a table: prove the migration and queries on every supported server, not just SQLite.
+    name: php 8.4 - laravel ${{ matrix.laravel }} - ${{ matrix.db.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      fail-fast: false
+      matrix:
+        laravel: ['12.*', '13.*']
+        db:
+          - { name: postgres, image: 'postgres:17', driver: pgsql, dsn: pgsql, port: 5432, ext: pdo_pgsql }
+          - { name: mysql, image: 'mysql:8.4', driver: mysql, dsn: mysql, port: 3306, ext: pdo_mysql }
+          - { name: mariadb, image: 'mariadb:11', driver: mariadb, dsn: mysql, port: 3306, ext: pdo_mysql }
+
+    services:
+      db:
+        image: ${{ matrix.db.image }}
+        # Each image reads only its own variables and ignores the rest.
+        env:
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: testing
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: testing
+          MARIADB_ROOT_PASSWORD: password
+          MARIADB_DATABASE: testing
+        ports:
+          - ${{ matrix.db.port }}:${{ matrix.db.port }}
+
+    # Environment variables win over the SQLite defaults in phpunit.xml.
+    env:
+      DB_CONNECTION: ${{ matrix.db.driver }}
+      DB_HOST: 127.0.0.1
+      DB_PORT: ${{ matrix.db.port }}
+      DB_DATABASE: testing
+      DB_USERNAME: root
+      DB_PASSWORD: password
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: intl, ${{ matrix.db.ext }}
+          coverage: none
+
+      - name: wait for the database
+        shell: bash
+        run: |
+          for attempt in $(seq 1 30); do
+            if php -r 'new PDO(getenv("DSN"), getenv("DB_USERNAME"), getenv("DB_PASSWORD"));' 2>/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "error: ${{ matrix.db.name }} did not accept connections within 60 seconds"
+          exit 1
+        env:
+          DSN: ${{ matrix.db.dsn }}:host=127.0.0.1;port=${{ matrix.db.port }};dbname=testing
+
+      - name: install dependencies
+        run: |
+          composer require "laravel/framework:${{ matrix.laravel }}" --no-interaction --no-update
+          composer update --prefer-stable --prefer-dist --no-interaction --no-progress
+
+      - name: run tests
+        run: vendor/bin/pest --ci
+
   coverage:
     name: coverage
     runs-on: ubuntu-latest

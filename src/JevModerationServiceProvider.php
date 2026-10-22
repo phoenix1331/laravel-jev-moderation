@@ -18,5 +18,9 @@ class JevModerationServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/jev-moderation.php' => config_path('jev-moderation.php'),
         ], 'jev-moderation-config');
+
+        $this->publishesMigrations([
+            __DIR__.'/../database/migrations' => database_path('migrations'),
+        ], 'jev-moderation-migrations');
     }
 }

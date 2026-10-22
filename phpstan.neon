@@ -6,7 +6,9 @@ parameters:
     paths:
         - src
         - config
+        - database
     # Larastan only allows env() in these directories.
     configDirectories:
         - config
+        - database
     tmpDir: build/phpstan

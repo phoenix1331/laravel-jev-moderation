@@ -45,7 +45,8 @@
     },
     "autoload": {
         "psr-4": {
-            "Phoenix1331\\JevModeration\\": "src/"
+            "Phoenix1331\\JevModeration\\": "src/",
+            "Phoenix1331\\JevModeration\\Database\\Factories\\": "database/factories/"
         }
     },
     "autoload-dev": {
