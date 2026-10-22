@@ -13,6 +13,7 @@ use Phoenix1331\JevModeration\Database\Factories\ModerationDecisionFactory;
 use Phoenix1331\JevModeration\Enums\ModerationSource;
 use Phoenix1331\JevModeration\Enums\ModerationStatus;
 use Phoenix1331\JevModeration\Models\Builders\DecisionBuilder;
+use Phoenix1331\JevModeration\Support\StatusColumn;
 
 /**
  * One row per check, report or review, read through a Moderatable model's
@@ -74,6 +75,11 @@ final class ModerationDecision extends Model
     public function reviewedBy(): MorphTo
     {
         return $this->morphTo('reviewed_by');
+    }
+
+    protected static function booted(): void
+    {
+        self::created(static fn (self $decision) => StatusColumn::sync($decision));
     }
 
     protected static function newFactory(): ModerationDecisionFactory

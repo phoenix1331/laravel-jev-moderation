@@ -16,6 +16,7 @@ use Phoenix1331\JevModeration\JevModerationManager;
 
 /** Namespaces whose classes are implementation detail. */
 const INTERNAL_NAMESPACES = [
+    'Phoenix1331\\JevModeration\\Console\\',
     'Phoenix1331\\JevModeration\\Jobs\\',
     'Phoenix1331\\JevModeration\\Models\\Builders\\',
     'Phoenix1331\\JevModeration\\Moderation\\',

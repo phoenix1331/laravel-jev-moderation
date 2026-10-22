@@ -21,6 +21,7 @@ use Phoenix1331\JevModeration\Moderation\Reviewer;
 use Phoenix1331\JevModeration\Moderation\Visibility;
 use Phoenix1331\JevModeration\Policies\PolicyRegistry;
 use Phoenix1331\JevModeration\Scopes\ModeratedScope;
+use Phoenix1331\JevModeration\Support\StatusColumn;
 use ReflectionClass;
 use ReflectionMethod;
 use Stringable;
@@ -159,11 +160,17 @@ trait Moderatable
      */
     public function scopeWhereModerationStatus(Builder $query, ModerationStatus ...$statuses): void
     {
-        $query->withoutGlobalScope(ModeratedScope::class)
-            ->whereHas('latestModeration', static fn (Builder $latest) => $latest->whereIn(
-                'status',
-                array_map(static fn (ModerationStatus $status): string => $status->value, $statuses),
-            ));
+        $values = array_map(static fn (ModerationStatus $status): string => $status->value, $statuses);
+
+        $query->withoutGlobalScope(ModeratedScope::class);
+
+        if (StatusColumn::exists($this)) {
+            $query->whereIn($this->qualifyColumn(StatusColumn::NAME), $values);
+
+            return;
+        }
+
+        $query->whereHas('latestModeration', static fn (Builder $latest) => $latest->whereIn('status', $values));
     }
 
     /**

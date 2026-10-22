@@ -37,8 +37,12 @@ function visibleTitles(): array
 }
 
 describe('visibility matrix', function (): void {
-    it('shows or hides content by mode, fail setting and latest status', function (string $mode, string $fail, ?ModerationStatus $status, bool $visible): void {
+    it('shows or hides content by mode, fail setting and latest status', function (string $mode, string $fail, ?ModerationStatus $status, bool $visible, bool $column): void {
         config(['jev-moderation.mode' => $mode, 'jev-moderation.fail' => $fail]);
+
+        if ($column) {
+            withStatusColumn();
+        }
 
         $post = postWithStatus($status);
 
@@ -80,7 +84,7 @@ describe('visibility matrix', function (): void {
         ['pre', 'closed', ModerationStatus::Blocked, false],
         ['pre', 'closed', ModerationStatus::Approved, true],
         ['pre', 'closed', ModerationStatus::Rejected, false],
-    ]);
+    ])->with(['joining decisions' => false, 'reading the status column' => true]);
 
     it('ships as post moderation that fails open', function (): void {
         $config = require __DIR__.'/../../../config/jev-moderation.php';

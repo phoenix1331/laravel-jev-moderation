@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 use Phoenix1331\JevModeration\Data\Classification;
 use Phoenix1331\JevModeration\Drivers\DriverManager;
 use Phoenix1331\JevModeration\Drivers\FakeDriver;
+use Phoenix1331\JevModeration\Support\StatusColumn;
 use Phoenix1331\JevModeration\Tests\TestCase;
 
 pest()->extend(TestCase::class)->in('Unit', 'Feature', 'Accuracy');
@@ -49,4 +52,16 @@ function moderationFake(): FakeDriver
     expect($fake)->toBeInstanceOf(FakeDriver::class);
 
     return $fake;
+}
+
+/**
+ * Add the optional moderation_status column, as the generated migration does.
+ */
+function withStatusColumn(string $table = 'forum_posts'): void
+{
+    Schema::table($table, function (Blueprint $blueprint): void {
+        $blueprint->string(StatusColumn::NAME, 16)->nullable()->index();
+    });
+
+    StatusColumn::forget($table);
 }

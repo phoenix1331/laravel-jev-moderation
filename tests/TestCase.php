@@ -7,6 +7,7 @@ namespace Phoenix1331\JevModeration\Tests;
 use Illuminate\Support\Facades\Http;
 use Orchestra\Testbench\TestCase as Orchestra;
 use Phoenix1331\JevModeration\JevModerationServiceProvider;
+use Phoenix1331\JevModeration\Support\StatusColumn;
 
 abstract class TestCase extends Orchestra
 {
@@ -16,6 +17,14 @@ abstract class TestCase extends Orchestra
 
         // Any HTTP request a test has not faked is a bug.
         Http::preventStrayRequests();
+    }
+
+    protected function tearDown(): void
+    {
+        // Column detection is cached per process; each test rebuilds the database.
+        StatusColumn::forget();
+
+        parent::tearDown();
     }
 
     /**
