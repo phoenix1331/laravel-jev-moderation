@@ -7,14 +7,18 @@ namespace Phoenix1331\JevModeration\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Carbon;
 use Phoenix1331\JevModeration\Database\Factories\ModerationDecisionFactory;
 use Phoenix1331\JevModeration\Enums\ModerationSource;
 use Phoenix1331\JevModeration\Enums\ModerationStatus;
+use Phoenix1331\JevModeration\Models\Builders\DecisionBuilder;
 
 /**
- * One row per check, report or review. The schema may change between
- * minor releases, so the public API returns data objects, not this model.
+ * One row per check, report or review. Append-only: saving an existing row,
+ * deleting one, or a mass update or delete throws DecisionsAreAppendOnly.
+ * The schema may change between minor releases, so the public API returns
+ * data objects, not this model.
  *
  * @internal
  *
@@ -45,6 +49,17 @@ final class ModerationDecision extends Model
     protected $table = 'moderation_decisions';
 
     protected $guarded = ['id'];
+
+    /**
+     * Saving or deleting an existing row ends up in this builder too, so
+     * it is the single guard for every write path.
+     *
+     * @param  QueryBuilder  $query
+     */
+    public function newEloquentBuilder($query): DecisionBuilder
+    {
+        return new DecisionBuilder($query);
+    }
 
     /**
      * @return MorphTo<Model, $this>

@@ -23,6 +23,7 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | `config/jev-moderation.php` | Driver, mode (`pre`/`post`), fail (`open`/`closed`), queue, `sync`, `store_content`, `max_context_tokens`, policies |
 | `database/migrations/` | `moderation_decisions`: polymorphic, append-only, schema builder only, explicit index names under 64 characters; morph key type follows `Schema::morphUsingUuids()`/`morphUsingUlids()` |
 | `src/Models/ModerationDecision.php` | `@internal` Eloquent model: enum, float and array casts, `moderatable()` and `reviewedBy()` morphs |
+| `src/Models/Builders/DecisionBuilder.php` | `@internal` builder returned by `newEloquentBuilder()`: `update`, `upsert`, `touch`, `increment`/`decrement`(`Each`), `delete`, `forceDelete` throw `Exceptions\DecisionsAreAppendOnly` |
 | `database/factories/ModerationDecisionFactory.php` | No Faker: `forModel()`, `pending()`, `passed()`, `flagged()`, `blocked()`, `reported()`, `approved()`, `rejected()`, `reviewedBy()`, `withContent()` |
 | `tests/Fixtures/Models/`, `tests/Fixtures/migrations/` | Host-app `Post` and `User` models and tables for tests; not shipped |
 | `src/Concerns/Moderatable.php`, `src/Attributes/Moderate.php` | Trait (relations, scope, human API) and `#[Moderate(fields, policy)]` |
@@ -55,7 +56,7 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | Content sent as named fields (`state: {content: {...}, context}`) | TypeSafe recommends named state; the hash covers the same structure that is sent |
 | Policy `choices` are a name-to-description map, safe choice last | Descriptions are sent to the model; `jev-1.13` leans towards the first option |
 | Driver errors are retryable (`429`, `529`, `5xx`, timeout) or permanent (everything else) | Retrying a bad key or malformed policy burns attempts |
-| Polymorphic, append-only `moderation_decisions` table | No changes to the developer's tables to start; human decisions add rows rather than overwrite Jev's, giving an audit trail and Jev-vs-human data for calibration |
+| Polymorphic, append-only `moderation_decisions` table, enforced by a custom builder rather than model events | No changes to the developer's tables to start; human decisions add rows rather than overwrite Jev's, giving an audit trail and Jev-vs-human data for calibration. Model `save()`/`delete()` run through the builder too, so one guard covers mass writes that skip events. Raw `DB::table()` writes and `truncate()` are not guarded |
 | Optional denormalised `moderation_status` column | Fast pre-moderation queries on hot tables without a `whereHas` |
 | User reports use the same pipeline (`flagForReview()`) | One decision history and one review queue |
 | Driver contract with `JevDriver` and `FakeDriver` | Jev is early access and may change; tests and consumers fake it |
