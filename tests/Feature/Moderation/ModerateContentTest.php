@@ -201,16 +201,18 @@ describe('queue', function (): void {
         expect(history($post))->toBe([ModerationStatus::Pending, ModerationStatus::Blocked]);
     });
 
-    it('leaves the decision pending and reports the failure inline, without retrying', function (): void {
+    it('records the failure inline, without retrying', function (): void {
         Event::fake(MODERATION_EVENTS);
         config(['jev-moderation.sync' => true]);
         moderationFake()->failWith(DriverException::retryable('Jev returned HTTP 529: no details', 529));
 
         $post = savePost();
 
-        expect(history($post))->toBe([ModerationStatus::Pending]);
+        expect(history($post))->toBe([ModerationStatus::Pending, ModerationStatus::Failed])
+            ->and($post->latestModeration()->first()?->meta)->toBe(['reason' => 'Jev returned HTTP 529: no details', 'retryable' => true]);
         moderationFake()->assertClassifiedTimes(1);
         Event::assertDispatched(ModerationFailed::class, fn (ModerationFailed $e): bool => $e->model->is($post)
+            && $e->decision->status === ModerationStatus::Failed
             && $e->reason === 'Jev returned HTTP 529: no details'
             && $e->retryable);
     });
@@ -242,15 +244,25 @@ describe('retries', function (): void {
         $job->assertReleased(delay: $delay);
     })->with([[1, 10], [2, 20], [4, 80]]);
 
-    it('gives up on the last attempt, leaving the decision pending', function (): void {
+    it('gives up on the last attempt and records a failed decision', function (): void {
         moderationFake()->failWith();
 
         $job = job($this->pending->id, 5);
         $job->handle(app(Checker::class));
 
         $job->assertFailed();
-        expect(ModerationDecision::query()->latest('id')->first()?->status)->toBe(ModerationStatus::Pending);
-        Event::assertDispatched(ModerationFailed::class, fn (ModerationFailed $e): bool => $e->retryable && $e->decision->is($this->pending));
+        $failed = ModerationDecision::query()->latest('id')->first();
+        expect($failed?->status)->toBe(ModerationStatus::Failed)
+            ->and($failed?->content_hash)->toBe($this->pending->content_hash)
+            ->and($failed?->policy_version)->toBe($this->pending->policy_version);
+        Event::assertDispatched(ModerationFailed::class, fn (ModerationFailed $e): bool => $e->retryable && $e->decision->is($failed));
+    });
+
+    it('records nothing for a failure on a superseded decision', function (): void {
+        $this->pending->moderatable->update(['body' => 'Edited while the first check was retrying']);
+
+        expect(app(Checker::class)->failed($this->pending, 'busy', true))->toBeNull();
+        Event::assertNotDispatched(ModerationFailed::class);
     });
 
     it('fails a permanent error at once', function (): void {

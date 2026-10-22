@@ -7,7 +7,7 @@ use Phoenix1331\JevModeration\Enums\ModerationStatus;
 
 it('stores every status under a stable value', function (): void {
     expect(array_map(fn (ModerationStatus $status): string => $status->value, ModerationStatus::cases()))
-        ->toBe(['pending', 'passed', 'flagged', 'blocked', 'approved', 'rejected']);
+        ->toBe(['pending', 'failed', 'passed', 'flagged', 'blocked', 'approved', 'rejected']);
 });
 
 it('stores every source under a stable value', function (): void {
@@ -19,6 +19,7 @@ it('marks only approved and rejected as human decisions', function (ModerationSt
     expect($status->isHuman())->toBe($human);
 })->with([
     [ModerationStatus::Pending, false],
+    [ModerationStatus::Failed, false],
     [ModerationStatus::Passed, false],
     [ModerationStatus::Flagged, false],
     [ModerationStatus::Blocked, false],

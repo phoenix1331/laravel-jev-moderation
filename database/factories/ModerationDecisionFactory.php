@@ -73,6 +73,17 @@ final class ModerationDecisionFactory extends Factory
         ]);
     }
 
+    /**
+     * The check gave up.
+     */
+    public function failed(string $reason = 'Jev returned HTTP 529: no details', bool $retryable = true): self
+    {
+        return $this->pending()->state([
+            'status' => ModerationStatus::Failed,
+            'meta' => ['reason' => $reason, 'retryable' => $retryable],
+        ]);
+    }
+
     public function passed(string $category = 'fine', float $confidence = 0.98): self
     {
         return $this->classified(ModerationStatus::Passed, $category, $confidence);

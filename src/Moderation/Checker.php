@@ -18,9 +18,9 @@ use Phoenix1331\JevModeration\Policies\PolicyRegistry;
 use Phoenix1331\JevModeration\Policies\ThresholdResolver;
 
 /**
- * Classifies a pending decision and appends the result. Skips decisions
- * that no longer describe the model: superseded by a newer decision, or
- * content that has changed since.
+ * Classifies a pending decision and appends the result, or a failed
+ * decision when the check gives up. Skips decisions that no longer describe
+ * the model: superseded by a newer decision, or content that has changed.
  *
  * @internal
  */
@@ -40,13 +40,13 @@ final readonly class Checker
      */
     public function check(ModerationDecision $pending): ?ModerationDecision
     {
-        $model = $pending->moderatable;
+        $model = self::moderated($pending);
 
-        if (! $model instanceof Model || ! method_exists($model, 'toModerationSubject') || ! ($subject = $model->toModerationSubject()) instanceof ModerationSubject) {
+        if ($model === null || ! method_exists($model, 'toModerationSubject') || ! ($subject = $model->toModerationSubject()) instanceof ModerationSubject) {
             return null;
         }
 
-        if ($pending->status !== ModerationStatus::Pending || $subject->hash !== $pending->content_hash || $this->latestId($pending) !== $pending->id) {
+        if (! $this->isCurrent($pending) || $subject->hash !== $pending->content_hash) {
             return null;
         }
 
@@ -79,6 +79,8 @@ final readonly class Checker
             ],
         ]);
 
+        $model->unsetRelation('latestModeration');
+
         $this->events->dispatch(match ($verdict->status) {
             ModerationStatus::Blocked => new ContentBlocked($model, $result),
             ModerationStatus::Flagged => new ContentFlagged($model, $result),
@@ -89,22 +91,52 @@ final readonly class Checker
     }
 
     /**
-     * The check gave up: fire ModerationFailed for the model, if it still exists.
+     * The check gave up: append a failed decision, so the fail setting
+     * decides visibility, and fire ModerationFailed. Does nothing when the
+     * pending decision has been superseded or its model is gone.
      */
-    public function failed(ModerationDecision $pending, string $reason, bool $retryable): void
+    public function failed(ModerationDecision $pending, string $reason, bool $retryable): ?ModerationDecision
     {
-        $model = $pending->moderatable;
+        $model = self::moderated($pending);
 
-        if ($model instanceof Model) {
-            $this->events->dispatch(new ModerationFailed($model, $pending, $reason, $retryable));
+        if ($model === null || ! $this->isCurrent($pending)) {
+            return null;
         }
+
+        $failed = ModerationDecision::query()->create([
+            ...$pending->only(['moderatable_type', 'moderatable_id', 'source', 'policy', 'policy_version', 'content_hash', 'content']),
+            'status' => ModerationStatus::Failed,
+            'meta' => ['reason' => $reason, 'retryable' => $retryable],
+        ]);
+
+        $model->unsetRelation('latestModeration');
+        $this->events->dispatch(new ModerationFailed($model, $failed, $reason, $retryable));
+
+        return $failed;
     }
 
-    private function latestId(ModerationDecision $pending): mixed
+    /**
+     * The moderated model, hidden or not: checks must read content the
+     * visibility scope would hide.
+     */
+    private static function moderated(ModerationDecision $pending): ?Model
     {
-        return ModerationDecision::query()
+        return $pending->moderatable()
+            ->createModelByType($pending->moderatable_type)
+            ->newQueryWithoutScopes()
+            ->find($pending->moderatable_id);
+    }
+
+    /**
+     * Still pending, and still the model's latest decision.
+     */
+    private function isCurrent(ModerationDecision $pending): bool
+    {
+        $latest = ModerationDecision::query()
             ->where('moderatable_type', $pending->moderatable_type)
             ->where('moderatable_id', $pending->moderatable_id)
             ->max('id');
+
+        return $pending->status === ModerationStatus::Pending && $latest === $pending->id;
     }
 }

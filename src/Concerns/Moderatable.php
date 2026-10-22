@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Phoenix1331\JevModeration\Concerns;
 
+use Illuminate\Contracts\Config\Repository;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
@@ -11,10 +13,13 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use InvalidArgumentException;
 use LogicException;
 use Phoenix1331\JevModeration\Attributes\Moderate;
+use Phoenix1331\JevModeration\Enums\ModerationStatus;
 use Phoenix1331\JevModeration\Models\ModerationDecision;
 use Phoenix1331\JevModeration\Moderation\ModerationSubject;
 use Phoenix1331\JevModeration\Moderation\Moderator;
+use Phoenix1331\JevModeration\Moderation\Visibility;
 use Phoenix1331\JevModeration\Policies\PolicyRegistry;
+use Phoenix1331\JevModeration\Scopes\ModeratedScope;
 use ReflectionClass;
 use ReflectionMethod;
 use Stringable;
@@ -42,6 +47,7 @@ trait Moderatable
      */
     public static function bootModeratable(): void
     {
+        static::addGlobalScope(new ModeratedScope);
         static::created(static fn (self $model) => app(Moderator::class)->saved($model->toModerationSubject(), created: true));
         static::updated(static fn (self $model) => app(Moderator::class)->saved($model->toModerationSubject(), created: false));
     }
@@ -64,6 +70,83 @@ trait Moderatable
     public function latestModeration(): MorphOne
     {
         return $this->morphOne(ModerationDecision::class, 'moderatable')->latestOfMany();
+    }
+
+    /**
+     * The latest decision's status; null when the model was never checked.
+     */
+    public function moderationStatus(): ?ModerationStatus
+    {
+        return $this->latestModeration?->status;
+    }
+
+    /**
+     * Waiting for a human.
+     */
+    public function isFlagged(): bool
+    {
+        return $this->moderationStatus() === ModerationStatus::Flagged;
+    }
+
+    /**
+     * Removed, automatically or by a moderator confirming it.
+     */
+    public function isBlocked(): bool
+    {
+        return in_array($this->moderationStatus(), [ModerationStatus::Blocked, ModerationStatus::Rejected], true);
+    }
+
+    /**
+     * Whether the global scope would show this model under the current mode
+     * and fail setting.
+     */
+    public function isVisible(): bool
+    {
+        return Visibility::fromConfig(app(Repository::class))->allows($this->moderationStatus());
+    }
+
+    /**
+     * Every model, whatever its moderation status.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeWithoutModeration(Builder $query): void
+    {
+        $query->withoutGlobalScope(ModeratedScope::class);
+    }
+
+    /**
+     * Models whose latest decision has one of these statuses, visible or not.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeWhereModerationStatus(Builder $query, ModerationStatus ...$statuses): void
+    {
+        $query->withoutGlobalScope(ModeratedScope::class)
+            ->whereHas('latestModeration', static fn (Builder $latest) => $latest->whereIn(
+                'status',
+                array_map(static fn (ModerationStatus $status): string => $status->value, $statuses),
+            ));
+    }
+
+    /**
+     * The review queue: models waiting for a human.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeOnlyFlagged(Builder $query): void
+    {
+        $this->scopeWhereModerationStatus($query, ModerationStatus::Flagged);
+    }
+
+    /**
+     * Models removed automatically or by a moderator.
+     *
+     * @param  Builder<static>  $query
+     */
+    public function scopeOnlyBlocked(Builder $query): void
+    {
+        $this->scopeWhereModerationStatus($query, ModerationStatus::Blocked, ModerationStatus::Rejected);
     }
 
     /**

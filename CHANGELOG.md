@@ -9,10 +9,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 
 - `moderation_decisions` migration, published with the `jev-moderation-migrations` tag: polymorphic and append-only, with the answering Jev version, category, confidence, content hash and reviewer, portable across SQLite, PostgreSQL, MySQL and MariaDB
-- `ModerationStatus` and `ModerationSource` enums
+- `ModerationStatus` (`pending`, `failed`, `passed`, `flagged`, `blocked`, `approved`, `rejected`) and `ModerationSource` enums
 - `Moderatable` trait and `#[Moderate(fields: [...], policy: ...)]` attribute: creating a model, or changing its moderated content, records a pending decision, from any save path (requests, jobs, Livewire, seeders); unchanged content and updates to other columns are skipped
 - Queued `ModerateContent` job, dispatched after the saving transaction commits: classifies the pending decision and appends a `passed`, `flagged` or `blocked` result with the deciding category and its probability, the answering Jev version, and Jev's full answer in `meta`
-- Retries for rate limits, overload and timeouts with exponential backoff or Jev's `retry-after`; permanent failures fail at once and leave the decision pending
+- Retries for rate limits, overload and timeouts with exponential backoff or Jev's `retry-after`; permanent failures fail at once; a check that gives up records a `failed` decision
+- Pre- and post-moderation (`mode`, `JEV_MODERATION_MODE`, default `post`) and fail open or closed for failed checks (`fail`, `JEV_MODERATION_FAIL`, default `open`), applied by a global scope; models never checked stay visible
+- `withoutModeration()`, `onlyFlagged()`, `onlyBlocked()` and `whereModerationStatus()` query scopes, and `moderationStatus()`, `isFlagged()`, `isBlocked()` and `isVisible()` on the model
 - `queue`, `connection`, `sync`, `tries` and `backoff` config options (`JEV_MODERATION_QUEUE`, `JEV_MODERATION_QUEUE_CONNECTION`, `JEV_MODERATION_SYNC`, `JEV_MODERATION_TRIES`, `JEV_MODERATION_BACKOFF`); `sync` classifies inline without retries
 - `ContentPending`, `ContentPassed`, `ContentFlagged`, `ContentBlocked` and `ModerationFailed` events, each with the model and the decision, serialisable for queued listeners
 - Overridable `moderatableContent()`, `moderationContext()`, `moderationPolicy()` and `moderationAuthor()` (defaults to a `user` relation), plus `moderationDecisions` and `latestModeration` relations

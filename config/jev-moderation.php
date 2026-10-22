@@ -50,13 +50,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Mode
+    |--------------------------------------------------------------------------
+    |
+    | "post": content is visible straight away and hidden once blocked or
+    | rejected. "pre": content is hidden until it passes or a human approves
+    | it. Models never checked (saved before install) stay visible.
+    |
+    | "fail" applies when a check gives up after its retries, or on an error
+    | such as a bad key: "open" keeps that content visible (an outage never
+    | hides anything), "closed" hides it (nothing unchecked gets through).
+    |
+    */
+
+    'mode' => env('JEV_MODERATION_MODE', 'post'),
+
+    'fail' => env('JEV_MODERATION_FAIL', 'open'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Queue
     |--------------------------------------------------------------------------
     |
     | Checks run on the queue after the saving transaction commits. Set sync
     | to true to classify inline instead (e.g. chat, before broadcasting): a
-    | failure then leaves the decision pending and fires ModerationFailed
-    | straight away, with no retries.
+    | failure is then recorded and ModerationFailed fires straight away, with
+    | no retries.
     |
     | Rate limits, overload and timeouts are retried up to tries times, with
     | exponential backoff from backoff seconds (or Jev's retry-after). Other

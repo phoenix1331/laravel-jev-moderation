@@ -68,6 +68,7 @@ final readonly class Moderator
                 : null,
         ]);
 
+        $subject->model->unsetRelation('latestModeration');
         $this->events->dispatch(new ContentPending($subject->model, $pending));
 
         if ($this->config->get('jev-moderation.sync') === true) {

@@ -12,6 +12,9 @@ enum ModerationStatus: string
     /** Waiting for a classification. */
     case Pending = 'pending';
 
+    /** The check gave up (retries used up, or a permanent error); the fail setting decides visibility. */
+    case Failed = 'failed';
+
     /** Below every review threshold. */
     case Passed = 'passed';
 

@@ -9,8 +9,8 @@ use Illuminate\Queue\SerializesModels;
 use Phoenix1331\JevModeration\Models\ModerationDecision;
 
 /**
- * A check gave up: the decision stays pending, and the fail setting decides
- * whether the content is visible meanwhile. The reason never includes the
+ * A check gave up: a failed decision was recorded, and the fail setting
+ * decides whether the content is visible. The reason never includes the
  * API key or the content.
  */
 final readonly class ModerationFailed
