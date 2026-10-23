@@ -10,6 +10,7 @@ use Phoenix1331\JevModeration\Console\AddColumnCommand;
 use Phoenix1331\JevModeration\Console\InstallCommand;
 use Phoenix1331\JevModeration\Console\PingCommand;
 use Phoenix1331\JevModeration\Console\RescanCommand;
+use Phoenix1331\JevModeration\Console\StatsCommand;
 use Phoenix1331\JevModeration\Contracts\ModerationDriver;
 use Phoenix1331\JevModeration\Drivers\DriverManager;
 use Phoenix1331\JevModeration\Policies\PolicyRegistry;
@@ -43,6 +44,7 @@ class JevModerationServiceProvider extends ServiceProvider
             InstallCommand::class,
             PingCommand::class,
             RescanCommand::class,
+            StatsCommand::class,
         ]);
     }
 }

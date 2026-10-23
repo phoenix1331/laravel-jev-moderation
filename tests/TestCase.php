@@ -37,6 +37,11 @@ abstract class TestCase extends Orchestra
 
     protected function defineDatabaseMigrations(): void
     {
+        // Persistent databases (CI's PostgreSQL, MySQL, MariaDB) keep whatever an earlier
+        // test left, such as a migration whose published file is gone and so never rolls
+        // back. Start every test from an empty database instead of trusting the rollback.
+        $this->artisan('db:wipe', ['--force' => true]);
+
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
         $this->loadMigrationsFrom(__DIR__.'/Fixtures/migrations');
     }
