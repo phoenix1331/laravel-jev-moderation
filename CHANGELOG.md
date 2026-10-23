@@ -11,6 +11,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `reject($moderator, $note, category: 'harassment')` reclassifies content: it is removed and the moderator's category is recorded on their decision. The category must be one of the model's policy choices other than its safe choice, else `InvalidArgumentException` and nothing is written
 - `ModerationDecisionFactory::rejected()` takes an optional category
 
+### Changed
+
+- `jev-moderation:stats` pairs each moderator decision with Jev's: rejected reports on content Jev passed count as missed, and dismissed reports no longer count as overrides
+
 ## [0.1.0] - 2026-10-23
 
 ### Added

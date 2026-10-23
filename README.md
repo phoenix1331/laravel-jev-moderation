@@ -124,7 +124,7 @@ The presets are checked against live Jev with a small labelled set ([results](ht
 |---|---|
 | `jev-moderation:install` | Publish config and migration, choose mode and policy, print the `.env` keys |
 | `jev-moderation:ping` | Check the key and driver with one sample classification |
-| `jev-moderation:stats` | Decisions per status and category, and how often moderators agreed |
+| `jev-moderation:stats` | Decisions per status and category, and how often moderators upheld Jev, overturned it, or caught what it missed |
 | `jev-moderation:rescan {model}` | Re-check content after a threshold change; skips moderator decisions unless asked |
 | `jev-moderation:add-column {table}` | Add an indexed, backfilled `moderation_status` column for fast queries on busy tables |
 
