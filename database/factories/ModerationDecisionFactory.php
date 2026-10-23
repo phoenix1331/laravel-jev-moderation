@@ -122,11 +122,12 @@ final class ModerationDecisionFactory extends Factory
     }
 
     /**
-     * A moderator confirmed the flag or block.
+     * A moderator confirmed the flag or block, optionally reclassifying it
+     * under a corrected category.
      */
-    public function rejected(?Model $moderator = null, ?string $note = 'confirmed'): self
+    public function rejected(?Model $moderator = null, ?string $note = 'confirmed', ?string $category = null): self
     {
-        return $this->human(ModerationStatus::Rejected, $moderator, $note);
+        return $this->human(ModerationStatus::Rejected, $moderator, $note)->state(['category' => $category]);
     }
 
     /**

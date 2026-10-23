@@ -60,6 +60,19 @@ it('builds each status through a factory state', function (ModerationDecisionFac
     'rejected' => [fn () => ModerationDecisionFactory::new()->rejected(), ModerationStatus::Rejected, ModerationSource::Human],
 ]);
 
+it('reclassifies through the rejected state', function (?string $category): void {
+    $decision = ModerationDecisionFactory::new()->forModel(post())->rejected(user(), 'harassment, not spam', $category)->create();
+
+    expect($decision->status)->toBe(ModerationStatus::Rejected)
+        ->and($decision->source)->toBe(ModerationSource::Human)
+        ->and($decision->category)->toBe($category)
+        ->and($decision->confidence)->toBeNull()
+        ->and($decision->note)->toBe('harassment, not spam');
+})->with([
+    'with a category' => 'harassment',
+    'without one' => null,
+]);
+
 it('leaves a pending decision without a classification', function (): void {
     $decision = ModerationDecisionFactory::new()->forModel(post())->pending()->create();
 
