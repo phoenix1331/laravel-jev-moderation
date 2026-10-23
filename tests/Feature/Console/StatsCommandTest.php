@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Artisan;
 use Phoenix1331\JevModeration\Database\Factories\ModerationDecisionFactory;
 use Phoenix1331\JevModeration\Enums\ModerationSource;
 use Phoenix1331\JevModeration\Tests\Fixtures\Models\ChatMessage;
@@ -44,8 +45,8 @@ it('counts decisions per status, automatic flags and blocks per category, and mo
             ['harassment', 2, 0],
             ['spam', 1, 3],
         ])
-        ->expectsOutputToContain('Moderators upheld (rejected)')
-        ->expectsOutputToContain('Moderators overturned (approved)')
+        ->expectsOutputToContain('Moderators upheld Jev (rejected)')
+        ->expectsOutputToContain('Moderators overturned Jev (approved)')
         ->expectsOutputToContain('75%')
         ->assertSuccessful();
 });
@@ -81,6 +82,7 @@ it('leaves out the category table and agreement when there is nothing to show', 
     $this->artisan('jev-moderation:stats')
         ->doesntExpectOutputToContain('Category')
         ->doesntExpectOutputToContain('Moderators upheld')
+        ->doesntExpectOutputToContain('Missed by Jev')
         ->assertSuccessful();
 });
 
@@ -99,3 +101,111 @@ it('rejects bad options', function (array $options, string $message): void {
     'text days' => [['--days' => 'week'], '--days must be a positive whole number.'],
     'unknown model' => [['--model' => 'App\\Models\\Gone'], '[App\\Models\\Gone] is not a model.'],
 ]);
+
+/**
+ * The moderator agreement lines of a stats run, label to count.
+ *
+ * @param  array<string, string>  $options
+ * @return array<string, string>
+ */
+function agreementLines(array $options = []): array
+{
+    Artisan::call('jev-moderation:stats', $options);
+    preg_match_all('/^\s*((?:Moderators|Upheld|Missed|Reports|Not checked)[^.]*?)\s*\.+\s*(\S+)\s*$/m', Artisan::output(), $matches);
+
+    return array_combine($matches[1], $matches[2]);
+}
+
+/**
+ * Jev's result for one forum post, then the moderator's decisions on it.
+ */
+function reviewedRecord(int $id, ?string $jev, string ...$moderator): void
+{
+    $record = ModerationDecisionFactory::new()->state(['moderatable_type' => ForumPost::class, 'moderatable_id' => $id]);
+
+    if ($jev !== null) {
+        $record->pending()->create();
+        $record->{$jev}()->create();
+    }
+
+    foreach ($moderator as $status) {
+        $record->{$status}()->create();
+    }
+}
+
+describe('moderator agreement', function (): void {
+    it('pairs each moderator decision with Jev\'s latest earlier result', function (?string $jev, string $moderator, array $expected): void {
+        reviewedRecord(1, $jev, $moderator);
+
+        expect(agreementLines())->toBe($expected);
+    })->with([
+        'flagged, rejected' => ['flagged', 'rejected', ['Moderators upheld Jev (rejected)' => '1', 'Moderators overturned Jev (approved)' => '0', 'Upheld share' => '100%']],
+        'blocked, rejected' => ['blocked', 'rejected', ['Moderators upheld Jev (rejected)' => '1', 'Moderators overturned Jev (approved)' => '0', 'Upheld share' => '100%']],
+        'flagged, approved' => ['flagged', 'approved', ['Moderators upheld Jev (rejected)' => '0', 'Moderators overturned Jev (approved)' => '1', 'Upheld share' => '0%']],
+        'blocked, approved' => ['blocked', 'approved', ['Moderators upheld Jev (rejected)' => '0', 'Moderators overturned Jev (approved)' => '1', 'Upheld share' => '0%']],
+        'passed, rejected' => ['passed', 'rejected', ['Moderators upheld Jev (rejected)' => '0', 'Moderators overturned Jev (approved)' => '0', 'Missed by Jev (passed, then rejected)' => '1']],
+        'passed, approved' => ['passed', 'approved', ['Moderators upheld Jev (rejected)' => '0', 'Moderators overturned Jev (approved)' => '0', 'Reports dismissed (passed, then approved)' => '1']],
+        'never checked, rejected' => [null, 'rejected', ['Moderators upheld Jev (rejected)' => '0', 'Moderators overturned Jev (approved)' => '0', 'Not checked by Jev' => '1']],
+        'never checked, approved' => [null, 'approved', ['Moderators upheld Jev (rejected)' => '0', 'Moderators overturned Jev (approved)' => '0', 'Not checked by Jev' => '1']],
+    ]);
+
+    it('ignores reports, failures and later results when finding Jev\'s decision', function (): void {
+        $record = ModerationDecisionFactory::new()->state(['moderatable_type' => ForumPost::class, 'moderatable_id' => 1]);
+        $record->passed()->create();
+        $record->reported()->create();
+        $record->failed()->create();
+        $record->rejected()->create();
+        $record->flagged()->create();
+
+        expect(agreementLines())->toHaveKey('Missed by Jev (passed, then rejected)', '1')
+            ->and(agreementLines())->toHaveKey('Moderators upheld Jev (rejected)', '0');
+    });
+
+    it('counts every decision of a moderator who changed their mind', function (): void {
+        reviewedRecord(1, 'flagged', 'rejected', 'approved');
+
+        expect(agreementLines())->toBe([
+            'Moderators upheld Jev (rejected)' => '1',
+            'Moderators overturned Jev (approved)' => '1',
+            'Upheld share' => '50%',
+        ]);
+    });
+
+    it('pairs with Jev\'s result from before the window', function (): void {
+        ModerationDecisionFactory::new()->blocked()->state(['moderatable_type' => ForumPost::class, 'moderatable_id' => 1, 'created_at' => now()->subDays(30)])->create();
+        ModerationDecisionFactory::new()->approved()->state(['moderatable_type' => ForumPost::class, 'moderatable_id' => 1, 'created_at' => now()->subDays(20)])->create();
+        ModerationDecisionFactory::new()->rejected()->state(['moderatable_type' => ForumPost::class, 'moderatable_id' => 1])->create();
+
+        expect(agreementLines())->toBe([
+            'Moderators upheld Jev (rejected)' => '1',
+            'Moderators overturned Jev (approved)' => '0',
+            'Upheld share' => '100%',
+        ]);
+    });
+
+    it('pairs within the same record only', function (): void {
+        reviewedRecord(1, 'blocked');
+        reviewedRecord(2, 'passed', 'rejected');
+        ModerationDecisionFactory::new()->flagged()->state(['moderatable_type' => ChatMessage::class, 'moderatable_id' => 3])->create();
+        ModerationDecisionFactory::new()->rejected()->state(['moderatable_type' => ForumPost::class, 'moderatable_id' => 3])->create();
+
+        expect(agreementLines())->toBe([
+            'Moderators upheld Jev (rejected)' => '0',
+            'Moderators overturned Jev (approved)' => '0',
+            'Missed by Jev (passed, then rejected)' => '1',
+            'Not checked by Jev' => '1',
+        ]);
+    });
+
+    it('respects --model', function (): void {
+        reviewedRecord(1, 'flagged', 'rejected');
+        ModerationDecisionFactory::new()->flagged()->state(['moderatable_type' => ChatMessage::class, 'moderatable_id' => 1])->create();
+        ModerationDecisionFactory::new()->approved()->state(['moderatable_type' => ChatMessage::class, 'moderatable_id' => 1])->create();
+
+        expect(agreementLines(['--model' => ChatMessage::class]))->toBe([
+            'Moderators upheld Jev (rejected)' => '0',
+            'Moderators overturned Jev (approved)' => '1',
+            'Upheld share' => '0%',
+        ]);
+    });
+});
