@@ -155,7 +155,7 @@ describe('on update', function (): void {
 
 describe('overrides', function (): void {
     it('uses overridden content, context, policy and author', function (): void {
-        $sender = User::query()->create(['name' => 'Sam']);
+        $sender = User::query()->create(['name' => 'Dai Jones']);
 
         $message = ChatMessage::query()->create(['room' => 'general', 'message' => ' gg, rematch? ', 'sender_id' => $sender->id]);
         $subject = $message->toModerationSubject();
@@ -177,7 +177,7 @@ describe('overrides', function (): void {
     });
 
     it('finds the author through a user relation', function (): void {
-        $author = User::query()->create(['name' => 'Alex']);
+        $author = User::query()->create(['name' => 'Shadwell Williams']);
 
         expect(forumPost(['user_id' => $author->id])->moderationAuthor()?->is($author))->toBeTrue()
             ->and(forumPost()->moderationAuthor())->toBeNull()

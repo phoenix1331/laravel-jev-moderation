@@ -31,14 +31,14 @@ describe('classify', function (): void {
     it('takes named fields, a policy and context', function (): void {
         JevModeration::fake()->classifyAs('harassment', 1.0, ['harassment' => 0.6, 'fine' => 0.4]);
 
-        $result = JevModeration::classify(['message' => 'shut up'], 'chat', 'sam: gg');
+        $result = JevModeration::classify(['message' => 'shut up'], 'chat', 'dai: gg');
 
         expect($result->policy)->toBe('chat')
             ->and($result->flagged())->toBeTrue()
             ->and($result->verdict->category)->toBe('harassment');
         JevModeration::fake()->assertClassified(fn (ModerationRequest $request): bool => $request->policy === 'chat'
             && $request->content === ['message' => 'shut up']
-            && $request->context === 'sam: gg');
+            && $request->context === 'dai: gg');
     });
 
     it('reports a block', function (): void {

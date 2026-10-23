@@ -8,3 +8,4 @@ composer.lock
 .phpunit.result.cache
 .env
 .claude/
+/.playwright-mcp

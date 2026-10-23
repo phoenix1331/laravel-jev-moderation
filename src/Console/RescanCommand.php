@@ -83,7 +83,12 @@ final class RescanCommand extends Command
             }
         });
 
-        $this->components->info(sprintf('Queued %d checks for %s%s.', $submitted, $label, $submitted < $count ? sprintf(' (%d had nothing to read)', $count - $submitted) : ''));
+        $this->components->info(sprintf(
+            config('jev-moderation.sync') === true ? 'Re-checked %d %s%s.' : 'Queued %d checks for %s%s.',
+            $submitted,
+            $label,
+            $submitted < $count ? sprintf(' (%d had nothing to read)', $count - $submitted) : '',
+        ));
 
         return self::SUCCESS;
     }

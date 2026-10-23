@@ -131,6 +131,13 @@ describe('checks', function (): void {
         rescan()->expectsOutputToContain('Queued 1 checks for '.ForumPost::class.' (1 had nothing to read)')->assertSuccessful();
     });
 
+    it('says the checks are done when sync is on', function (): void {
+        config(['jev-moderation.sync' => true]);
+        ForumPost::query()->create(['title' => 'post', 'body' => 'Body']);
+
+        rescan()->expectsOutputToContain('Re-checked 1 '.ForumPost::class.'.')->assertSuccessful();
+    });
+
     it('says when there is nothing to re-check', function (): void {
         rescan()->expectsOutputToContain('Nothing to re-check')->assertSuccessful();
     });
