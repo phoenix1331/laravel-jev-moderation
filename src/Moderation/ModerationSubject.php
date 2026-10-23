@@ -27,6 +27,16 @@ final readonly class ModerationSubject
     ) {}
 
     /**
+     * Read a model's subject, or null when it does not use Moderatable.
+     */
+    public static function for(Model $model): ?self
+    {
+        $subject = method_exists($model, 'toModerationSubject') ? $model->toModerationSubject() : null;
+
+        return $subject instanceof self ? $subject : null;
+    }
+
+    /**
      * sha256 of the content with keys sorted, so reordering fields in the
      * attribute does not count as a change.
      *

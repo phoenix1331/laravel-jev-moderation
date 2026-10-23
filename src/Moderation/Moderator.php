@@ -58,11 +58,11 @@ final readonly class Moderator
 
     /**
      * Record a pending decision and start the check, whether or not the
-     * content changed. Used by saves and moderateNow().
+     * content changed. Used by saves, moderateNow() and rescan.
      *
      * @return ModerationDecision|null null when disabled or there is nothing to read
      */
-    public function submit(ModerationSubject $subject): ?ModerationDecision
+    public function submit(ModerationSubject $subject, ModerationSource $source = ModerationSource::Jev): ?ModerationDecision
     {
         if ($this->config->get('jev-moderation.enabled', true) === false || $subject->content === []) {
             return null;
@@ -74,7 +74,7 @@ final readonly class Moderator
             'moderatable_type' => $subject->model->getMorphClass(),
             'moderatable_id' => $subject->model->getKey(),
             'status' => ModerationStatus::Pending,
-            'source' => ModerationSource::Jev,
+            'source' => $source,
             'policy' => $policy->name,
             'policy_version' => $policy->version,
             'content_hash' => $subject->hash,

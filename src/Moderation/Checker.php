@@ -42,7 +42,9 @@ final readonly class Checker
     {
         $model = self::moderated($pending);
 
-        if ($model === null || ! method_exists($model, 'toModerationSubject') || ! ($subject = $model->toModerationSubject()) instanceof ModerationSubject) {
+        $subject = $model === null ? null : ModerationSubject::for($model);
+
+        if ($model === null || $subject === null) {
             return null;
         }
 
