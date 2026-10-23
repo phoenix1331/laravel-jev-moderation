@@ -9,7 +9,7 @@ Add a trait to any Eloquent model. Every time it is saved, its content is classi
 [![Tests](https://github.com/phoenix1331/laravel-jev-moderation/actions/workflows/tests.yml/badge.svg)](https://github.com/phoenix1331/laravel-jev-moderation/actions/workflows/tests.yml)
 [![Static analysis](https://github.com/phoenix1331/laravel-jev-moderation/actions/workflows/static-analysis.yml/badge.svg)](https://github.com/phoenix1331/laravel-jev-moderation/actions/workflows/static-analysis.yml)
 [![Packagist](https://img.shields.io/packagist/v/phoenix1331/laravel-jev-moderation.svg)](https://packagist.org/packages/phoenix1331/laravel-jev-moderation)
-[![Licence](https://img.shields.io/packagist/l/phoenix1331/laravel-jev-moderation.svg)](https://github.com/phoenix1331/laravel-jev-moderation/blob/main/LICENSE)
+[![Licence](https://img.shields.io/badge/licence-MIT-blue.svg)](https://github.com/phoenix1331/laravel-jev-moderation/blob/main/LICENSE)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/phoenix1331/laravel-jev-moderation/main/art/demo-dark.png">
