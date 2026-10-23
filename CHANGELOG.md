@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-23
+
 ### Added
 
 - `reject($moderator, $note, category: 'harassment')` reclassifies content: it is removed and the moderator's category is recorded on their decision. The category must be one of the model's policy choices other than its safe choice, else `InvalidArgumentException` and nothing is written
@@ -50,5 +52,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Decisions are append-only: saving, deleting, or mass updating or deleting an existing decision throws `DecisionsAreAppendOnly`
 - `ModerationDecisionFactory` with `pending`, `failed`, `passed`, `flagged`, `blocked`, `reported`, `approved` and `rejected` states, for seeding demos and tests without Faker
 
-[Unreleased]: https://github.com/phoenix1331/laravel-jev-moderation/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/phoenix1331/laravel-jev-moderation/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/phoenix1331/laravel-jev-moderation/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/phoenix1331/laravel-jev-moderation/releases/tag/v0.1.0
