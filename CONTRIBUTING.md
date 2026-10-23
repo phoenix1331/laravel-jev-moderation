@@ -6,6 +6,14 @@ Thanks for helping. Bug reports, fixes and new features are all welcome. Questio
 
 Prerequisites: PHP 8.3+ with `mbstring`, `intl` and `pdo_sqlite`, Composer 2, Node and npm. `osv-scanner` is required by the pre-commit hook (`go install github.com/google/osv-scanner/cmd/osv-scanner@latest`).
 
+On Ubuntu or WSL:
+
+```bash
+sudo apt install php8.4-cli php8.4-mbstring php8.4-intl php8.4-sqlite3 php8.4-xml php8.4-curl php8.4-pcov
+```
+
+Everything runs on the host: there is no Docker setup and no database server to start.
+
 ```bash
 git clone https://github.com/phoenix1331/laravel-jev-moderation
 cd laravel-jev-moderation
@@ -24,7 +32,27 @@ npm install   # activates the git hooks
 | `composer analyse` | Larastan at max level |
 | `composer check` | Style check, static analysis and the coverage gate, in that order |
 
-The tests use Pest with Orchestra Testbench and an in-memory SQLite database, so nothing else needs to be running. Every PHP file declares `strict_types`; Pint adds it if you forget.
+The tests use Pest with Orchestra Testbench and an in-memory SQLite database, so nothing else needs to be running. Every PHP file declares `strict_types`; Pint adds it if you forget. `Http::preventStrayRequests()` is on for every test, and Jev answers come from recorded fixtures in `tests/Fixtures/Responses/jev/`.
+
+### Persistent databases
+
+CI also runs the suite on PostgreSQL, MySQL and MariaDB. In-memory SQLite starts empty for every test, so a test that leaks tables or rows only fails there. Reproduce that locally with a SQLite file:
+
+```bash
+touch /tmp/jev-moderation.sqlite
+DB_DATABASE=/tmp/jev-moderation.sqlite vendor/bin/pest
+```
+
+### Accuracy suite
+
+`composer test:accuracy` sends the labelled samples in `tests/Accuracy/Corpus/` to live Jev with each policy preset and writes `docs/accuracy.md`. It needs a key, costs about 28,000 input tokens a run, and is never part of `composer check` or CI:
+
+```bash
+JEV_API_KEY=... composer test:accuracy
+JEV_API_KEY=... JEV_MODEL=jev-1.14.0 composer test:accuracy   # measure a pinned version
+```
+
+Run it after changing a preset's wording or thresholds, or when TypeSafe ships a new Jev version, and commit the updated `docs/accuracy.md` with the change. The corpus is synthetic: reserved phone numbers, `example.test` addresses, no real people.
 
 ## Git hooks
 
@@ -40,6 +68,7 @@ Every user-facing change adds a line under `## [Unreleased]` in `CHANGELOG.md`, 
 ## Pull requests
 
 - Keep each pull request to one change
+- Never put a real API key, real user content or personal data in tests, fixtures or the corpus
 - Include tests; coverage must stay at or above 90%
 - `composer check` must pass
 - Fill in the pull request checklist

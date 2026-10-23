@@ -135,6 +135,10 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | `larastan/larastan` (dev) | `^3.13` | `level: max`, no baseline |
 | `laravel/pint` (dev) | `^1.32` | `laravel` preset plus `declare_strict_types` |
 
+Both ends verified locally on 2026-10-23 (PHP 8.4): `composer update --prefer-lowest` with Laravel 12 and with Laravel 13, and prefer-stable on Laravel 13.38, all 485 tests passing. The PHP 8.3 and 8.5 cells are covered by CI only.
+
+Smoke test 2026-10-23: `git archive HEAD` (exactly what Packagist ships: `LICENSE`, `README.md`, `composer.json`, `config/`, `database/`, `src/`) installed as 0.1.0 into a fresh Laravel 13.38 app under `build/smoke-app` through a mirrored path repository. Discovery and the `JevModeration` alias, `install --no-interaction --migrate`, a README-style model saved, queued on the database queue and checked by `queue:work` (`pending -> passed`), blocked content hidden and shown again on `approve()`, `classify()`, `ping`, `stats`, `rescan --dry-run`, and `add-column posts` with backfill and the column-based scope all worked.
+
 ## CI
 
 | Workflow | Jobs |
