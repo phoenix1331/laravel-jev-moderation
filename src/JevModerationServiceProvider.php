@@ -8,6 +8,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use Phoenix1331\JevModeration\Console\AddColumnCommand;
 use Phoenix1331\JevModeration\Console\InstallCommand;
+use Phoenix1331\JevModeration\Console\PingCommand;
 use Phoenix1331\JevModeration\Contracts\ModerationDriver;
 use Phoenix1331\JevModeration\Drivers\DriverManager;
 use Phoenix1331\JevModeration\Policies\PolicyRegistry;
@@ -39,6 +40,7 @@ class JevModerationServiceProvider extends ServiceProvider
         $this->commands([
             AddColumnCommand::class,
             InstallCommand::class,
+            PingCommand::class,
         ]);
     }
 }
