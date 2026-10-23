@@ -125,11 +125,15 @@ trait Moderatable
     }
 
     /**
-     * A moderator confirms the flag or block: the content is removed.
+     * A moderator confirms the flag or block: the content is removed. Pass a
+     * category to reclassify, rejecting under the corrected category (one of
+     * the policy's choices other than its safe choice).
+     *
+     * @throws InvalidArgumentException when the category is not a harmful choice of this model's policy
      */
-    public function reject(?Model $moderator = null, ?string $note = null): ModerationDecision
+    public function reject(?Model $moderator = null, ?string $note = null, ?string $category = null): ModerationDecision
     {
-        return app(Reviewer::class)->resolve($this->toModerationSubject(), ModerationStatus::Rejected, $moderator, $note);
+        return app(Reviewer::class)->resolve($this->toModerationSubject(), ModerationStatus::Rejected, $moderator, $note, $category);
     }
 
     /**

@@ -13,6 +13,7 @@ use Phoenix1331\JevModeration\Jobs\ModerateContent;
 use Phoenix1331\JevModeration\Models\ModerationDecision;
 use Phoenix1331\JevModeration\Moderation\Checker;
 use Phoenix1331\JevModeration\Policies\PolicyRegistry;
+use Phoenix1331\JevModeration\Tests\Fixtures\Models\ChatMessage;
 use Phoenix1331\JevModeration\Tests\Fixtures\Models\ForumPost;
 use Phoenix1331\JevModeration\Tests\Fixtures\Models\User;
 
@@ -135,6 +136,13 @@ describe('reviews', function (): void {
         Event::assertDispatched(ReviewResolved::class, fn (ReviewResolved $e): bool => $e->decision->is($decision));
     });
 
+    it('rejects without a category as before', function (): void {
+        $decision = reviewedPost('harassment', 0.6)->reject();
+
+        expect($decision->category)->toBeNull()
+            ->and($decision->confidence)->toBeNull();
+    });
+
     it('works on hidden content found through withoutModeration()', function (): void {
         $id = reviewedPost('spam')->id;
 
@@ -160,6 +168,70 @@ describe('reviews', function (): void {
         $post->update(['body' => 'You clearly have no idea.']);
 
         expect($post->moderationStatus())->toBe(ModerationStatus::Approved);
+    });
+});
+
+describe('reclassify', function (): void {
+    it('rejects under the corrected category, keeping Jev\'s decision', function (): void {
+        $post = reviewedPost('harassment', 0.6);
+        $jev = $post->moderationDecisions()->where('status', ModerationStatus::Flagged)->firstOrFail();
+        $moderator = User::query()->create(['name' => 'Moderator']);
+
+        $decision = $post->reject($moderator, 'wrong label', 'spam');
+
+        expect(trail($post))->toBe(['jev:pending', 'jev:flagged', 'human:rejected'])
+            ->and($decision->status)->toBe(ModerationStatus::Rejected)
+            ->and($decision->source)->toBe(ModerationSource::Human)
+            ->and($decision->category)->toBe('spam')
+            ->and($decision->confidence)->toBeNull()
+            ->and($decision->reviewedBy?->is($moderator))->toBeTrue()
+            ->and($decision->note)->toBe('wrong label')
+            ->and($jev->fresh()?->toArray())->toBe($jev->toArray())
+            ->and($jev->category)->toBe('harassment');
+    });
+
+    it('carries the category on ReviewResolved', function (): void {
+        Event::fake([ReviewResolved::class]);
+        $post = reviewedPost('harassment', 0.6);
+
+        $post->reject(category: 'spam');
+
+        Event::assertDispatched(ReviewResolved::class, fn (ReviewResolved $e): bool => $e->decision->category === 'spam');
+    });
+
+    it('throws and writes nothing for a category the policy cannot give', function (string $category): void {
+        Event::fake([ReviewResolved::class]);
+        $post = reviewedPost('harassment', 0.6);
+        $before = trail($post);
+
+        expect(fn () => $post->reject(category: $category))->toThrow(
+            InvalidArgumentException::class,
+            "Category [{$category}] is not a harmful choice of moderation policy [community]. Allowed: spam, harassment, hate, personal_data, off_topic.",
+        );
+        expect(trail($post))->toBe($before);
+        Event::assertNotDispatched(ReviewResolved::class);
+    })->with([
+        'unknown' => 'typo',
+        'the safe choice' => 'fine',
+        'a chat category' => 'sexual',
+    ]);
+
+    it('checks the category against the record\'s own policy', function (): void {
+        moderationFake()->classifyAs('fine', 1.0, ['fine' => 1.0]);
+        $message = ChatMessage::query()->create(['room' => 'general', 'message' => 'hello']);
+
+        expect($message->reject(category: 'sexual')->category)->toBe('sexual')
+            ->and(fn () => $message->reject(category: 'off_topic'))->toThrow(InvalidArgumentException::class, 'policy [chat]');
+    });
+
+    it('reclassifies while automatic moderation is off', function (): void {
+        $post = reviewedPost();
+        config(['jev-moderation.enabled' => false]);
+
+        $decision = $post->reject(note: 'manual removal', category: 'hate');
+
+        expect($decision->category)->toBe('hate')
+            ->and($post->moderationStatus())->toBe(ModerationStatus::Rejected);
     });
 });
 

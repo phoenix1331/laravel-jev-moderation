@@ -6,6 +6,8 @@ namespace Phoenix1331\JevModeration\Moderation;
 
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Database\Eloquent\Model;
+use InvalidArgumentException;
+use Phoenix1331\JevModeration\Data\Policy;
 use Phoenix1331\JevModeration\Enums\ModerationSource;
 use Phoenix1331\JevModeration\Enums\ModerationStatus;
 use Phoenix1331\JevModeration\Events\ContentReported;
@@ -35,24 +37,34 @@ final readonly class Reviewer
         $current = $this->latestStatus($subject->model);
         $status = in_array($current, self::REMOVED, true) ? $current : ModerationStatus::Flagged;
 
-        $decision = $this->record($subject, $status, ModerationSource::Report, $reporter, $reason);
+        $policy = $this->policies->get($subject->policy);
+        $decision = $this->record($subject, $policy, $status, ModerationSource::Report, $reporter, $reason);
         $this->events->dispatch(new ContentReported($subject->model, $decision));
 
         return $decision;
     }
 
-    public function resolve(ModerationSubject $subject, ModerationStatus $status, ?Model $moderator, ?string $note): ModerationDecision
+    /**
+     * @param  string|null  $category  the moderator's category, a non-safe choice of the record's policy
+     *
+     * @throws InvalidArgumentException when the category is not one of the policy's harmful choices; nothing is written
+     */
+    public function resolve(ModerationSubject $subject, ModerationStatus $status, ?Model $moderator, ?string $note, ?string $category = null): ModerationDecision
     {
-        $decision = $this->record($subject, $status, ModerationSource::Human, $moderator, $note);
+        $policy = $this->policies->get($subject->policy);
+
+        if ($category !== null) {
+            $this->ensureHarmfulChoice($policy, $category);
+        }
+
+        $decision = $this->record($subject, $policy, $status, ModerationSource::Human, $moderator, $note, $category);
         $this->events->dispatch(new ReviewResolved($subject->model, $decision));
 
         return $decision;
     }
 
-    private function record(ModerationSubject $subject, ModerationStatus $status, ModerationSource $source, ?Model $by, ?string $note): ModerationDecision
+    private function record(ModerationSubject $subject, Policy $policy, ModerationStatus $status, ModerationSource $source, ?Model $by, ?string $note, ?string $category = null): ModerationDecision
     {
-        $policy = $this->policies->get($subject->policy);
-
         $decision = ModerationDecision::query()->create([
             'moderatable_type' => $subject->model->getMorphClass(),
             'moderatable_id' => $subject->model->getKey(),
@@ -61,6 +73,7 @@ final readonly class Reviewer
             'policy' => $policy->name,
             'policy_version' => $policy->version,
             'content_hash' => $subject->hash,
+            'category' => $category,
             'reviewed_by_type' => $by?->getMorphClass(),
             'reviewed_by_id' => $by?->getKey(),
             'note' => $note,
@@ -69,6 +82,25 @@ final readonly class Reviewer
         $subject->model->unsetRelation('latestModeration');
 
         return $decision;
+    }
+
+    private function ensureHarmfulChoice(Policy $policy, string $category): void
+    {
+        $allowed = array_values(array_filter(
+            array_keys($policy->choices),
+            static fn (string $choice): bool => $choice !== $policy->safeChoice,
+        ));
+
+        if (in_array($category, $allowed, true)) {
+            return;
+        }
+
+        throw new InvalidArgumentException(sprintf(
+            'Category [%s] is not a harmful choice of moderation policy [%s]. Allowed: %s.',
+            $category,
+            $policy->name,
+            implode(', ', $allowed),
+        ));
     }
 
     private function latestStatus(Model $model): ?ModerationStatus
