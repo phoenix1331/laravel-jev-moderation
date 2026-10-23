@@ -130,7 +130,9 @@ final readonly class Checker
     }
 
     /**
-     * Still pending, and still the model's latest decision.
+     * Still pending, and still the model's latest decision. max() comes back
+     * as a string when the connection stringifies fetches or emulates
+     * prepares (common behind PgBouncer), so compare it as a number.
      */
     private function isCurrent(ModerationDecision $pending): bool
     {
@@ -139,6 +141,6 @@ final readonly class Checker
             ->where('moderatable_id', $pending->moderatable_id)
             ->max('id');
 
-        return $pending->status === ModerationStatus::Pending && $latest === $pending->id;
+        return $pending->status === ModerationStatus::Pending && is_numeric($latest) && (int) $latest === $pending->id;
     }
 }
