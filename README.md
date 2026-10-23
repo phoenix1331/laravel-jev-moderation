@@ -71,7 +71,10 @@ ForumPost::withoutModeration()->get();   // everything
 $post->flagForReview('reported by user', $reporter);
 $post->approve($moderator, 'false positive');
 $post->reject($moderator, 'confirmed spam');
+$post->reject($moderator, 'harassment, not spam', category: 'harassment');
 ```
+
+Passing `category:` reclassifies: the content is removed and the moderator's category is recorded on their decision, checked against the model's policy so a typo cannot corrupt calibration data.
 
 Check something without recording it:
 

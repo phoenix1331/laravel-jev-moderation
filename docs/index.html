@@ -258,6 +258,7 @@ $post->moderationDecisions;     <span class="c">// every decision, oldest first<
 $post->flagForReview('reported by user', $reporter);
 $post->approve($moderator, 'false positive');
 $post->reject($moderator, 'confirmed spam');
+$post->reject($moderator, 'harassment, not spam', category: 'harassment');  <span class="c">// reclassify: removed under the corrected category</span>
 $post->moderateNow();           <span class="c">// check again, even if unchanged</span></code></pre>
 
       <h3>Queries</h3>

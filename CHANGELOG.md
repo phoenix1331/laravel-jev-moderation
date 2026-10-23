@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `reject($moderator, $note, category: 'harassment')` reclassifies content: it is removed and the moderator's category is recorded on their decision. The category must be one of the model's policy choices other than its safe choice, else `InvalidArgumentException` and nothing is written
+- `ModerationDecisionFactory::rejected()` takes an optional category
+
 ## [0.1.0] - 2026-10-23
 
 ### Added
