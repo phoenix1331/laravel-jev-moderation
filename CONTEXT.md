@@ -56,7 +56,7 @@ Built so far: service provider, config, migration, `ModerationDecision`, enums, 
 | `tests/Accuracy/` | Live Jev suite, outside the default `phpunit.xml` suites: `Corpus/{preset}.php` (53 synthetic samples with `expected` and `acceptable` outcomes), `Support/` (`Corpus`, `Sample`, `AccuracyRunner` with retry on retryable errors, `AccuracyResult` scoring exact/acceptable/wrong/missed/wrongly blocked/over-flagged, `AccuracyReport` writing `docs/accuracy.md`). Harness and corpus validity tested in the default suite with `FakeDriver` (`tests/Unit/Accuracy/`) |
 | `tests/` | Pest + Testbench; `tests/Arch/` enforces strict types, no debug calls; `tests/Fixtures/Responses/jev/` recorded Jev responses (synthetic content) |
 | `art/` | Committed images only, export-ignored: `install.gif`, `ping.gif`, `stats.gif`, `rescan.gif` (VHS, live Jev) and `demo-light.png`/`demo-dark.png` (demo page, full page, device scale). README links them by raw GitHub URL. Tapes and the record script stay local and uncommitted |
-| `docs/` | GitHub Pages site; `docs/accuracy.md` written by the accuracy suite; export-ignored |
+| `docs/` | GitHub Pages site, export-ignored: `index.html` (self-contained, Google Fonts only, light and dark, threshold explorer replaying the `community` harassment rule with the recorded 0.44 answer), `images/` (copies of `art/` images, since Pages serves `/docs` only), `accuracy.md` written by the accuracy suite |
 
 ## External integrations
 

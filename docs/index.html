@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jev Moderation for Laravel</title>
+<meta name="description" content="Confidence-aware content moderation for Laravel: classify any Eloquent model with Jev and route each item to passed, flagged for human review, or blocked, using per-category thresholds.">
+<meta property="og:title" content="Jev Moderation for Laravel">
+<meta property="og:description" content="Classify any Eloquent model with Jev and route it to passed, flagged for a human, or blocked, with per-category thresholds and an append-only audit trail.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://phoenix1331.github.io/laravel-jev-moderation/">
+<meta property="og:image" content="https://phoenix1331.github.io/laravel-jev-moderation/images/demo-light.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314213d'/%3E%3Crect x='6' y='8' width='20' height='4' rx='2' fill='%2338b26e'/%3E%3Crect x='6' y='14' width='14' height='4' rx='2' fill='%23e3a51a'/%3E%3Crect x='6' y='20' width='8' height='4' rx='2' fill='%23e5484d'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #F6F7F9;
+    --paper: #FFFFFF;
+    --ink: #14213D;
+    --ink-soft: #4B5873;
+    --rule: #DCE1EA;
+    --passed: #2E9E5E;
+    --flagged: #C98A0B;
+    --blocked: #D6363B;
+    --accent: #2F5FD0;
+    --code-bg: #14213D;
+    --code-ink: #E9EDF5;
+    --hatch: #E7EAF1;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #0F1729;
+      --paper: #17223A;
+      --ink: #E9EDF5;
+      --ink-soft: #A7B3C8;
+      --rule: #2C3A57;
+      --passed: #4CC383;
+      --flagged: #EBB43A;
+      --blocked: #F06469;
+      --accent: #7EA2F2;
+      --code-bg: #0A1020;
+      --code-ink: #E9EDF5;
+      --hatch: #26324D;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Archivo", system-ui, sans-serif; font-size: 1.0625rem; line-height: 1.6;
+  }
+  a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  a:hover { text-decoration-thickness: 2px; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  .wrap { max-width: 72rem; margin: 0 auto; padding: 0 1rem; }
+  .measure { max-width: 44rem; }
+  h1, h2, h3 { font-variation-settings: "wdth" 125; line-height: 1.1; letter-spacing: -0.01em; }
+  h1 { font-size: clamp(2.25rem, 6vw, 4rem); font-weight: 800; margin: 0 0 1.25rem; max-width: 18ch; }
+  h2 { font-size: clamp(1.5rem, 3vw, 2.125rem); font-weight: 750; margin: 0 0 1rem; }
+  h3 { font-size: 1.125rem; font-weight: 700; margin: 2rem 0 0.5rem; }
+  p { margin: 0 0 1rem; }
+  .lede { font-size: 1.25rem; color: var(--ink-soft); max-width: 40rem; }
+  .soft { color: var(--ink-soft); }
+
+  header.site { padding: 1.25rem 0; }
+  header.site .wrap { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  .brand { font-weight: 800; font-variation-settings: "wdth" 125; text-decoration: none; font-size: 1.125rem; display: inline-flex; align-items: center; gap: 0.6rem; }
+  .brand svg { width: 1.75rem; height: 1.75rem; }
+  nav.links { display: flex; gap: 1.25rem; flex-wrap: wrap; font-size: 0.9375rem; }
+
+  .hero { padding-top: 2.5rem; padding-bottom: 2.5rem; }
+  .install {
+    display: inline-flex; align-items: center; gap: 0.75rem; margin: 0.5rem 0 2.5rem;
+    background: var(--code-bg); color: var(--code-ink); border-radius: 6px; padding: 0.75rem 0.75rem 0.75rem 1rem;
+    font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 0.9375rem; max-width: 100%; overflow-x: auto;
+  }
+  .install code { background: none; padding: 0; font-size: inherit; color: inherit; }
+  .install button {
+    font: inherit; font-family: "Archivo", sans-serif; font-size: 0.875rem; font-weight: 600;
+    background: var(--code-ink); color: var(--code-bg); border: 0; border-radius: 4px; padding: 0.35rem 0.75rem; cursor: pointer;
+  }
+  .shot { margin: 0; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; background: var(--paper); }
+  .shot img { display: block; width: 100%; height: auto; }
+  figcaption { font-size: 0.875rem; color: var(--ink-soft); padding: 0.6rem 1rem; border-top: 1px solid var(--rule); }
+
+  section { padding: 3.5rem 0; border-top: 1px solid var(--rule); }
+
+  .outcomes { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; margin: 1.5rem 0 0; }
+  .outcome { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 1.25rem; border-top: 4px solid var(--c); }
+  .outcome h3 { margin: 0 0 0.4rem; color: var(--c); }
+  .outcome p { margin: 0; color: var(--ink-soft); font-size: 0.9375rem; }
+
+  /* The explorer: the one bold element on the page */
+  .explorer { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 1.5rem; max-width: 46rem; }
+  .explorer-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin-bottom: 2.25rem; }
+  .explorer-head strong { font-size: 1.5rem; font-variation-settings: "wdth" 115; font-variant-numeric: tabular-nums; }
+  .track {
+    position: relative; height: 3.5rem; border-radius: 6px; border: 1px solid var(--rule); overflow: visible;
+    background: repeating-linear-gradient(135deg, transparent 0 9px, var(--hatch) 9px 11px), var(--paper);
+  }
+  .fill { position: absolute; inset: 0 auto 0 0; border-radius: 5px 0 0 5px; background: var(--fill, var(--passed)); transition: width 120ms ease-out, background 120ms; }
+  .line { position: absolute; top: -8px; bottom: -8px; width: 0; border-left: 3px dashed var(--c); }
+  .line span { position: absolute; top: -1.5rem; left: -2.5rem; width: 5rem; text-align: center; font-size: 0.8125rem; font-weight: 700; color: var(--c); }
+  .marker { position: absolute; bottom: -1.6rem; transform: translateX(-50%); font-size: 0.75rem; color: var(--ink-soft); white-space: nowrap; }
+  .marker::before { content: ""; display: block; width: 2px; height: 0.5rem; background: var(--ink-soft); margin: 0 auto 0.1rem; }
+  .control { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 1rem; margin-top: 2.5rem; }
+  .control label { font-weight: 600; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .verdict { margin: 1.25rem 0 0; padding: 0.875rem 1rem; border-radius: 6px; font-weight: 600; border-left: 4px solid var(--c); background: color-mix(in srgb, var(--c) 12%, var(--paper)); }
+  .explorer-note { margin: 0.75rem 0 0; font-size: 0.875rem; color: var(--ink-soft); }
+
+  code, pre { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  :not(pre) > code { font-size: 0.9em; background: color-mix(in srgb, var(--ink) 8%, transparent); padding: 0.1em 0.35em; border-radius: 4px; }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); padding: 1.125rem 1.25rem; border-radius: 8px;
+    overflow-x: auto; font-size: 0.875rem; line-height: 1.6; margin: 0 0 1.25rem; max-width: 48rem;
+  }
+  .c { color: #8A97B0; }
+
+  .table-scroll { overflow-x: auto; margin: 0 0 1.25rem; max-width: 56rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9375rem; }
+  th, td { text-align: left; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-weight: 700; white-space: nowrap; }
+  td code { white-space: nowrap; }
+  .yes { color: var(--passed); font-weight: 700; }
+  .no { color: var(--blocked); font-weight: 700; }
+
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 30rem), 1fr)); gap: 1.5rem; }
+  .gif { margin: 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--rule); background: #1E1E2E; }
+  .gif img { display: block; width: 100%; height: auto; }
+
+  .card { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 1.25rem; max-width: 34rem; }
+  .card h3 { margin-top: 0; }
+  .tag { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 999px; background: color-mix(in srgb, var(--flagged) 18%, var(--paper)); color: var(--ink); margin-left: 0.4rem; vertical-align: middle; }
+
+  footer { padding: 2.5rem 0 3rem; border-top: 1px solid var(--rule); font-size: 0.9375rem; color: var(--ink-soft); }
+  footer .wrap { display: flex; gap: 1.25rem; flex-wrap: wrap; justify-content: space-between; }
+  footer nav { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+
+  @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#14213d"/><rect x="6" y="8" width="20" height="4" rx="2" fill="#38b26e"/><rect x="6" y="14" width="14" height="4" rx="2" fill="#e3a51a"/><rect x="6" y="20" width="8" height="4" rx="2" fill="#e5484d"/></svg>
+      Jev Moderation
+    </a>
+    <nav class="links" aria-label="Sections">
+      <a href="#quick-start">Quick start</a>
+      <a href="#policies">Policies</a>
+      <a href="#commands">Commands</a>
+      <a href="#configuration">Configuration</a>
+      <a href="#data">Data</a>
+      <a href="https://github.com/phoenix1331/laravel-jev-moderation">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+  <div class="wrap hero">
+    <h1>Confidence-aware moderation for Laravel</h1>
+    <p class="lede">Add a trait to any Eloquent model. Every time it is saved, its content is classified by Jev, TypeSafe's typed decision model, and the probability of each risky category decides whether it passes, waits for a human, or is blocked.</p>
+    <div class="install">
+      <code id="install-cmd">composer require phoenix1331/laravel-jev-moderation</code>
+      <button type="button" id="copy" aria-label="Copy the install command">Copy</button>
+    </div>
+    <figure class="shot">
+      <picture>
+        <source srcset="images/demo-dark.png" media="(prefers-color-scheme: dark)">
+        <img src="images/demo-light.png" width="1185" height="1775" alt="A demo page listing forum posts and chat messages, each with a passed, flagged, blocked, approved or rejected status, the deciding category and probability, and the full history of decisions.">
+      </picture>
+      <figcaption>A demo app with live Jev answers: what visitors see, every post's decision history, and chat messages checked with the previous messages as context.</figcaption>
+    </figure>
+  </div>
+
+  <section id="why">
+    <div class="wrap">
+      <h2>Why probabilities, not labels</h2>
+      <div class="measure">
+        <p>Most moderation APIs hand back a label. Jev answers a typed question with a probability for every choice, so a post that is 55% fine and 44% harassment is visibly borderline rather than quietly "fine". This package compares each risky category's probability with its own thresholds: a low bar to send something to a person, a high bar to remove it without one.</p>
+        <p>It hooks into model events rather than middleware, so content saved from jobs, APIs, Livewire or seeders is moderated too. Every check, report and review is a new row in an append-only table, which gives you an audit trail and the data to compare Jev with your moderators. It is headless: no views, no routes. A Filament review queue is a separate package.</p>
+      </div>
+      <div class="outcomes">
+        <div class="outcome" style="--c: var(--passed)"><h3>Passed</h3><p>No category reached its threshold. In post mode the content was visible all along.</p></div>
+        <div class="outcome" style="--c: var(--flagged)"><h3>Flagged</h3><p>A category reached <code>review_above</code>, or Jev was undecided. It waits for a human.</p></div>
+        <div class="outcome" style="--c: var(--blocked)"><h3>Blocked</h3><p>A category reached <code>block_above</code>. It is hidden until a moderator approves it.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="explorer">
+    <div class="wrap">
+      <h2>Thresholds, per category</h2>
+      <p class="measure">The <code>community</code> preset flags harassment at 0.40 and blocks it at 0.95. Drag to see what a post's harassment probability earns. The marker is a real Jev answer: "anyone still recommending the Seiko 5 clearly has no idea what they are talking about", where <code>fine</code> was the top choice at 0.55.</p>
+      <div class="explorer">
+        <div class="explorer-head">
+          <span>Probability of <code>harassment</code></span>
+          <strong id="p-out">0.44</strong>
+        </div>
+        <div class="track" aria-hidden="true">
+          <div class="fill" id="fill" style="width: 44%"></div>
+          <div class="line" style="left: 40%; --c: var(--flagged)"><span>review 0.40</span></div>
+          <div class="line" style="left: 95%; --c: var(--blocked)"><span>block 0.95</span></div>
+          <div class="marker" style="left: 44%">recorded answer</div>
+        </div>
+        <div class="control">
+          <label for="p">Harassment</label>
+          <input type="range" id="p" min="0" max="1" step="0.01" value="0.44" aria-describedby="verdict">
+        </div>
+        <p class="verdict" id="verdict" role="status" style="--c: var(--flagged)">Flagged for a human: harassment at 0.44 reached review_above 0.40, even though Jev's top choice was fine.</p>
+        <p class="explorer-note">Every category with a rule is checked this way and the strongest action wins. A probability equal to a threshold counts as reaching it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="quick-start">
+    <div class="wrap">
+      <h2>Quick start</h2>
+      <pre><code>composer require phoenix1331/laravel-jev-moderation
+php artisan jev-moderation:install</code></pre>
+      <p class="measure">The install command publishes the config and migration, asks for the mode and default policy, and prints the <code>.env</code> keys. Add your key from <a href="https://typesafe.ai">typesafe.ai</a>, then check it end to end:</p>
+      <pre><code>JEV_API_KEY=...
+php artisan jev-moderation:ping</code></pre>
+      <p class="measure">Mark a model with the fields to send and a policy:</p>
+      <pre><code>use Phoenix1331\JevModeration\Attributes\Moderate;
+use Phoenix1331\JevModeration\Concerns\Moderatable;
+
+#[Moderate(fields: ['title', 'body'], policy: 'community')]
+class ForumPost extends Model
+{
+    use Moderatable;
+}</code></pre>
+      <p class="measure">Saving it records a pending decision and queues the check after the transaction commits. Run a queue worker, or set <code>JEV_MODERATION_SYNC=true</code> to check inline.</p>
+      <p class="measure soft">Laravel's default <code>DatabaseSeeder</code> uses <code>WithoutModelEvents</code>, which switches moderation off for every seeder it calls. Remove it from seeders whose content should be checked.</p>
+    </div>
+  </section>
+
+  <section id="usage">
+    <div class="wrap">
+      <h2>Using it</h2>
+      <h3>On the model</h3>
+      <pre><code>$post->moderationStatus();      <span class="c">// ModerationStatus, or null if never checked</span>
+$post->isFlagged();             <span class="c">// waiting for a human</span>
+$post->isBlocked();             <span class="c">// blocked, or rejected by a moderator</span>
+$post->isVisible();             <span class="c">// what the global scope would decide</span>
+$post->latestModeration;        <span class="c">// the decision that sets the status</span>
+$post->moderationDecisions;     <span class="c">// every decision, oldest first</span>
+
+$post->flagForReview('reported by user', $reporter);
+$post->approve($moderator, 'false positive');
+$post->reject($moderator, 'confirmed spam');
+$post->moderateNow();           <span class="c">// check again, even if unchanged</span></code></pre>
+
+      <h3>Queries</h3>
+      <pre><code>ForumPost::query()->get();                  <span class="c">// visible content only</span>
+ForumPost::withoutModeration()->get();      <span class="c">// everything</span>
+ForumPost::onlyFlagged()->get();            <span class="c">// the review queue</span>
+ForumPost::onlyBlocked()->get();            <span class="c">// blocked or rejected</span>
+ForumPost::whereModerationStatus(ModerationStatus::Pending, ModerationStatus::Failed)->get();</code></pre>
+
+      <h3>Overrides</h3>
+      <pre><code>public function moderatableContent(): array    <span class="c">// field name to value; default: the #[Moderate] fields</span>
+public function moderationContext(): ?string   <span class="c">// e.g. the thread title or previous messages</span>
+public function moderationPolicy(): string     <span class="c">// default: the attribute's policy, else JEV_MODERATION_POLICY</span>
+public function moderationAuthor(): ?Model     <span class="c">// default: the user relation</span></code></pre>
+
+      <h3>Ad-hoc checks</h3>
+      <p class="measure">Check a chat message before broadcasting it, without recording anything:</p>
+      <pre><code>use Phoenix1331\JevModeration\Facades\JevModeration;
+
+$result = JevModeration::classify($message, 'chat', $previousMessage);
+
+if ($result->blocked()) {
+    return;
+}</code></pre>
+
+      <h3>Events</h3>
+      <p class="measure">Each carries the model and the decision, and serialises for queued listeners: <code>ContentPending</code>, <code>ContentPassed</code>, <code>ContentFlagged</code>, <code>ContentBlocked</code>, <code>ContentReported</code>, <code>ReviewResolved</code>, and <code>ModerationFailed</code> (also with the reason and whether it was retryable). Sanctions such as muting an author belong in your listeners.</p>
+    </div>
+  </section>
+
+  <section id="policies">
+    <div class="wrap">
+      <h2>Policies and presets</h2>
+      <p class="measure">A policy is one Jev question with a fixed set of choices. Descriptions are sent to Jev and are the main accuracy lever; the safe choice goes last, because Jev leans slightly towards the first option.</p>
+      <pre><code>'community' => [
+    'question' => 'Classify this user-generated forum content in `content`. ...',
+    'choices' => [
+        'spam' => 'Advertising, link farming, scams or repeated promotional content',
+        'harassment' => 'Insults, threats, intimidation or targeted abuse of a person',
+        <span class="c">// hate, personal_data, off_topic ...</span>
+        'fine' => 'Acceptable content that breaks none of these rules, ...',
+    ],
+    'safe_choice' => 'fine',
+    'actions' => [
+        'spam' => ['review_above' => 0.50, 'block_above' => 0.90],
+        'harassment' => ['review_above' => 0.40, 'block_above' => 0.95],
+        'personal_data' => ['review_above' => 0.40],
+        <span class="c">// ...</span>
+    ],
+    'uncertain_below' => 0.30,
+],</code></pre>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Preset</th><th>For</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>community</code></td><td>Forums and comments</td><td>Flags undecided answers (confidence below 0.30)</td></tr>
+            <tr><td><code>chat</code></td><td>Fast-moving chat</td><td>Higher review thresholds and no confidence floor, so the queue stays usable</td></tr>
+            <tr><td><code>strict</code></td><td>Platforms for young people</td><td>Low thresholds, floor 0.50; <code>self_harm</code> always goes to a human, never auto-blocked</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="measure">Each policy has a version, a hash of everything Jev sees and every threshold, stored on each decision. After a change, <code>jev-moderation:rescan</code> re-checks content.</p>
+
+      <h3>Measured, lightly</h3>
+      <p class="measure">The presets are checked against 53 synthetic labelled posts with <code>composer test:accuracy</code>, against <code>jev-1.14.0</code>:</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Preset</th><th>Exact</th><th>Exact or acceptable</th><th>Missed harmful</th><th>Wrongly blocked</th></tr></thead>
+          <tbody>
+            <tr><td><code>chat</code></td><td>86%</td><td>100%</td><td>0</td><td>0</td></tr>
+            <tr><td><code>community</code></td><td>75%</td><td>100%</td><td>0</td><td>0</td></tr>
+            <tr><td><code>strict</code></td><td>73%</td><td>100%</td><td>0</td><td>0</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="measure soft">"Acceptable" is not ideal but not wrong, such as a rude but fair post being flagged. The set is small and the wording was tuned on it, so treat it as a sanity check and measure on your own content. Jev is decisive on clear cases, so most clear-cut posts are blocked rather than flagged; set <code>block_above</code> to 1.0 where every removal needs a person.</p>
+    </div>
+  </section>
+
+  <section id="modes">
+    <div class="wrap">
+      <h2>Modes and visibility</h2>
+      <p class="measure">A global scope hides content by its latest decision. <code>fail</code> applies only to checks that gave up after their retries, or on an error such as a bad key.</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Latest status</th><th><code>post</code> (default)</th><th><code>pre</code></th></tr></thead>
+          <tbody>
+            <tr><td>never checked</td><td class="yes">visible</td><td class="yes">visible</td></tr>
+            <tr><td>pending</td><td class="yes">visible</td><td class="no">hidden</td></tr>
+            <tr><td>passed, approved</td><td class="yes">visible</td><td class="yes">visible</td></tr>
+            <tr><td>flagged</td><td class="yes">visible</td><td class="no">hidden</td></tr>
+            <tr><td>blocked, rejected</td><td class="no">hidden</td><td class="no">hidden</td></tr>
+            <tr><td>failed</td><td colspan="2">visible with <code>fail: open</code> (default), hidden with <code>fail: closed</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="measure">For busy tables, <code>php artisan jev-moderation:add-column forum_posts</code> generates a migration adding an indexed <code>moderation_status</code> column, backfilled and kept in sync, so the scope reads a column instead of joining decisions.</p>
+    </div>
+  </section>
+
+  <section id="commands">
+    <div class="wrap">
+      <h2>Commands</h2>
+      <p class="measure">Recorded against live Jev.</p>
+      <div class="grid-2">
+        <div>
+          <h3><code>jev-moderation:install</code></h3>
+          <figure class="gif"><img src="images/install.gif" width="1400" height="860" loading="lazy" alt="The install command asking for the mode, the default policy and whether to migrate, then printing the .env keys."></figure>
+        </div>
+        <div>
+          <h3><code>jev-moderation:ping</code></h3>
+          <figure class="gif"><img src="images/ping.gif" width="1400" height="860" loading="lazy" alt="The ping command listing models, classifying a sample as passed by jev-1.14.0, and warning that jev-latest is an alias."></figure>
+        </div>
+        <div>
+          <h3><code>jev-moderation:stats</code></h3>
+          <figure class="gif"><img src="images/stats.gif" width="1400" height="860" loading="lazy" alt="The stats command showing decisions per status, flags and blocks per category, and how often moderators upheld them."></figure>
+        </div>
+        <div>
+          <h3><code>jev-moderation:rescan</code></h3>
+          <figure class="gif"><img src="images/rescan.gif" width="1400" height="860" loading="lazy" alt="The rescan command counting blocked chat messages on a dry run, then re-checking them after confirmation."></figure>
+        </div>
+      </div>
+      <p class="measure">Rescan skips content a moderator approved or rejected unless <code>--status</code> names it, includes content never checked, and takes <code>--since</code>, <code>--chunk</code> and <code>--dry-run</code>.</p>
+    </div>
+  </section>
+
+  <section id="testing">
+    <div class="wrap">
+      <h2>Testing your app</h2>
+      <p class="measure">Swap in the fake for every check (saves, queued jobs and <code>classify()</code>), set its answers, and assert on what was sent:</p>
+      <pre><code>use Phoenix1331\JevModeration\Data\ModerationRequest;
+use Phoenix1331\JevModeration\Facades\JevModeration;
+
+JevModeration::fake()->classifyAs('spam', 1.0, ['spam' => 1.0]);
+
+$post = ForumPost::query()->create(['title' => 'Cheap watches', 'body' => 'Buy now']);
+
+expect($post->isBlocked())->toBeTrue();
+JevModeration::fake()->assertClassified(fn (ModerationRequest $request): bool => $request->policy === 'community');</code></pre>
+      <p class="measure">Also <code>classifyUsing()</code>, <code>failWith()</code>, one-off <code>push()</code> and <code>pushFailure()</code>, <code>assertNotClassified()</code>, <code>assertClassifiedTimes()</code> and <code>assertNothingClassified()</code>. Set <code>JEV_MODERATION_DRIVER=fake</code> in <code>phpunit.xml</code> so tests never reach Jev.</p>
+    </div>
+  </section>
+
+  <section id="configuration">
+    <div class="wrap">
+      <h2>Configuration</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Key</th><th>Default</th><th>Env</th></tr></thead>
+          <tbody>
+            <tr><td><code>enabled</code></td><td><code>true</code></td><td><code>JEV_MODERATION_ENABLED</code></td></tr>
+            <tr><td><code>mode</code></td><td><code>post</code></td><td><code>JEV_MODERATION_MODE</code></td></tr>
+            <tr><td><code>fail</code></td><td><code>open</code></td><td><code>JEV_MODERATION_FAIL</code></td></tr>
+            <tr><td><code>queue</code>, <code>connection</code></td><td>app default</td><td><code>JEV_MODERATION_QUEUE</code>, <code>JEV_MODERATION_QUEUE_CONNECTION</code></td></tr>
+            <tr><td><code>sync</code></td><td><code>false</code></td><td><code>JEV_MODERATION_SYNC</code></td></tr>
+            <tr><td><code>tries</code>, <code>backoff</code></td><td><code>5</code>, <code>10</code> seconds, doubling</td><td><code>JEV_MODERATION_TRIES</code>, <code>JEV_MODERATION_BACKOFF</code></td></tr>
+            <tr><td><code>store_content</code></td><td><code>false</code></td><td><code>JEV_MODERATION_STORE_CONTENT</code></td></tr>
+            <tr><td><code>driver</code></td><td><code>jev</code></td><td><code>JEV_MODERATION_DRIVER</code></td></tr>
+            <tr><td><code>drivers.jev.key</code></td><td>none</td><td><code>JEV_API_KEY</code></td></tr>
+            <tr><td><code>drivers.jev.model</code></td><td><code>jev-latest</code></td><td><code>JEV_MODEL</code></td></tr>
+            <tr><td><code>drivers.jev.base_url</code></td><td><code>https://api.typesafe.ai/v1</code></td><td><code>JEV_BASE_URL</code></td></tr>
+            <tr><td><code>drivers.jev.timeout</code></td><td><code>5</code> seconds</td><td><code>JEV_TIMEOUT</code></td></tr>
+            <tr><td><code>max_context_tokens</code></td><td><code>24000</code></td><td><code>JEV_MODERATION_MAX_CONTEXT_TOKENS</code></td></tr>
+            <tr><td><code>policy</code></td><td><code>community</code></td><td><code>JEV_MODERATION_POLICY</code></td></tr>
+            <tr><td><code>policies</code></td><td><code>community</code>, <code>chat</code>, <code>strict</code></td><td>edit the published config</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="measure soft"><code>jev-latest</code> is an alias that moves when TypeSafe ships a release. Once your thresholds are tuned, pin a version such as <code>JEV_MODEL=jev-1.14.0</code>; every decision records the version that answered.</p>
+    </div>
+  </section>
+
+  <section id="data">
+    <div class="wrap">
+      <h2>Security and data</h2>
+      <div class="measure">
+        <p><strong>Sent to TypeSafe:</strong> the <code>#[Moderate]</code> fields, any <code>moderationContext()</code>, and the policy question and choices, on create, on a change to a moderated field, and on <code>moderateNow()</code>, <code>rescan</code> or <code>classify()</code>. Never the model's other columns or its author. The fake driver sends nothing.</p>
+        <p><strong>Stored:</strong> one append-only row per check, report and review in <code>moderation_decisions</code>: the status, the deciding category and its probability, the policy and Jev versions, a sha256 of the content, and the reviewer or reporter with any note. A copy of the content only with <code>store_content</code> on. Queued jobs carry a decision id, not content, and the package never logs.</p>
+        <p><strong>Worth knowing:</strong> content saved without model events (<code>saveQuietly()</code>, seeders with <code>WithoutModelEvents</code>, raw inserts) is never checked; there is no built-in erasure, so delete a model's decision rows directly when asked; and <code>fail: open</code> keeps content visible during an outage. The full list is in <a href="https://github.com/phoenix1331/laravel-jev-moderation/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="family">
+    <div class="wrap">
+      <h2>Family</h2>
+      <div class="card">
+        <h3>filament-jev-moderation <span class="tag">coming next</span></h3>
+        <p class="soft">A Filament review queue built on this package: flagged content to approve or reject, and a calibration widget comparing Jev's decisions with your moderators'.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>MIT licence. Requires PHP 8.3+ and Laravel 12 or 13.</span>
+    <nav aria-label="Project links">
+      <a href="https://github.com/phoenix1331/laravel-jev-moderation">GitHub</a>
+      <a href="https://packagist.org/packages/phoenix1331/laravel-jev-moderation">Packagist</a>
+      <a href="https://github.com/phoenix1331/laravel-jev-moderation/blob/main/CHANGELOG.md">Changelog</a>
+      <a href="https://github.com/phoenix1331/laravel-jev-moderation/blob/main/LICENSE">Licence</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var button = document.getElementById('copy');
+    button.addEventListener('click', function () {
+      var text = document.getElementById('install-cmd').textContent;
+      (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () {
+        button.textContent = 'Copied';
+        setTimeout(function () { button.textContent = 'Copy'; }, 1500);
+      }, function () { button.textContent = 'Select and copy'; });
+    });
+
+    // The same rule as ThresholdResolver for one category: block, then review.
+    var REVIEW = 0.40, BLOCK = 0.95;
+    var slider = document.getElementById('p');
+    var out = document.getElementById('p-out');
+    var fill = document.getElementById('fill');
+    var verdict = document.getElementById('verdict');
+
+    function render() {
+      var p = Math.round(parseFloat(slider.value) * 100) / 100;
+      var shown = p.toFixed(2);
+      var top = p > 1 - p ? 'harassment' : 'fine';
+      var c, text;
+
+      if (p >= BLOCK) {
+        c = 'var(--blocked)';
+        text = 'Blocked automatically: harassment at ' + shown + ' reached block_above 0.95.';
+      } else if (p >= REVIEW) {
+        c = 'var(--flagged)';
+        text = 'Flagged for a human: harassment at ' + shown + ' reached review_above 0.40' + (top === 'fine' ? ", even though Jev's top choice was fine." : '.');
+      } else {
+        c = 'var(--passed)';
+        text = 'Passed: harassment at ' + shown + ' is under review_above 0.40.';
+      }
+
+      out.textContent = shown;
+      fill.style.width = (p * 100) + '%';
+      fill.style.setProperty('--fill', c);
+      verdict.style.setProperty('--c', c);
+      verdict.textContent = text;
+    }
+
+    slider.addEventListener('input', render);
+    render();
+  })();
+</script>
+</body>
+</html>
