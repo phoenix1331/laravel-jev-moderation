@@ -137,7 +137,6 @@
 
   .card { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; padding: 1.25rem; max-width: 34rem; }
   .card h3 { margin-top: 0; }
-  .tag { display: inline-block; font-size: 0.75rem; font-weight: 700; padding: 0.1rem 0.5rem; border-radius: 999px; background: color-mix(in srgb, var(--flagged) 18%, var(--paper)); color: var(--ink); margin-left: 0.4rem; vertical-align: middle; }
 
   footer { padding: 2.5rem 0 3rem; border-top: 1px solid var(--rule); font-size: 0.9375rem; color: var(--ink-soft); }
   footer .wrap { display: flex; gap: 1.25rem; flex-wrap: wrap; justify-content: space-between; }
@@ -187,7 +186,7 @@
       <h2>Why probabilities, not labels</h2>
       <div class="measure">
         <p>Most moderation APIs hand back a label. Jev answers a typed question with a probability for every choice, so a post that is 55% fine and 44% harassment is visibly borderline rather than quietly "fine". This package compares each risky category's probability with its own thresholds: a low bar to send something to a person, a high bar to remove it without one.</p>
-        <p>It hooks into model events rather than middleware, so content saved from jobs, APIs, Livewire or seeders is moderated too. Every check, report and review is a new row in an append-only table, which gives you an audit trail and the data to compare Jev with your moderators. It is headless: no views, no routes. A Filament review queue is a separate package.</p>
+        <p>It hooks into model events rather than middleware, so content saved from jobs, APIs, Livewire or seeders is moderated too. Every check, report and review is a new row in an append-only table, which gives you an audit trail and the data to compare Jev with your moderators. It is headless: no views, no routes. A Filament review queue is a separate package, <a href="https://github.com/phoenix1331/filament-jev-moderation">filament-jev-moderation</a>.</p>
       </div>
       <div class="outcomes">
         <div class="outcome" style="--c: var(--passed)"><h3>Passed</h3><p>No category reached its threshold. In post mode the content was visible all along.</p></div>
@@ -447,8 +446,10 @@ JevModeration::fake()->assertClassified(fn (ModerationRequest $request): bool =>
     <div class="wrap">
       <h2>Family</h2>
       <div class="card">
-        <h3>filament-jev-moderation <span class="tag">coming next</span></h3>
+        <h3><a href="https://github.com/phoenix1331/filament-jev-moderation">filament-jev-moderation</a></h3>
         <p class="soft">A Filament review queue built on this package: flagged content to approve or reject, and a calibration widget comparing Jev's decisions with your moderators'.</p>
+        <pre><code>composer require phoenix1331/filament-jev-moderation</code></pre>
+        <p class="soft"><a href="https://phoenix1331.github.io/filament-jev-moderation">Documentation</a> · <a href="https://packagist.org/packages/phoenix1331/filament-jev-moderation">Packagist</a></p>
       </div>
     </div>
   </section>

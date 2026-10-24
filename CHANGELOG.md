@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- The README and documentation site link to [Jev Moderation for Filament](https://github.com/phoenix1331/filament-jev-moderation), now on Packagist
+
 ## [0.2.0] - 2026-10-23
 
 ### Added

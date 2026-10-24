@@ -8,7 +8,7 @@ This is a Composer **package**, not a Laravel app. There is no `app/`, no UI, no
 
 | Package | Relationship |
 |---|---|
-| `phoenix1331/filament-jev-moderation` | Downstream Filament review queue and calibration widget; requires this package. Built after it |
+| `phoenix1331/filament-jev-moderation` | Downstream Filament review queue and calibration widget; requires this package. On Packagist from 0.1.0 |
 | `laravel-audit-logging` (`../audit-logging` playground) | Source of the trait-registers-shared-observer pattern |
 | `laravel-jev-hotdog`, `laravel-jev-triage-playground` (playgrounds) | Existing Jev clients; reference for the API shape spike |
 | `dynamik-dev/modman`, `edulazaro/laratox` | Prior art; neither is Jev-native or confidence-calibrated. Positioning: "confidence-aware moderation for Laravel" |

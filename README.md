@@ -2,7 +2,7 @@
 
 **Confidence-aware content moderation for Laravel.**
 
-> **The Jev Moderation family:** **Jev Moderation** classifies and records (this package) · Jev Moderation for Filament, a review queue and calibration widget, is coming next
+> **The Jev Moderation family:** **Jev Moderation** classifies and records (this package) · [Jev Moderation for Filament](https://github.com/phoenix1331/filament-jev-moderation) is where people review it, with a review queue and calibration widget
 
 Add a trait to any Eloquent model. Every time it is saved, its content is classified by [Jev](https://typesafe.ai), TypeSafe's typed decision model, and the probability of each risky category decides whether it passes, waits for a human, or is blocked.
 
@@ -24,7 +24,7 @@ Most moderation APIs hand back a label. Jev answers a typed question with a prob
 
 - **Model events, not middleware.** Content saved from jobs, APIs, Livewire and seeders is moderated too, not just HTTP requests.
 - **An append-only history.** Every check, report and review adds a row, so Jev's decision is never overwritten by a moderator's. That gives you an audit trail and the data to compare the two.
-- **Headless.** No views and no routes: use the model API, query scopes and events in your own app, or the Filament package.
+- **Headless.** No views and no routes: use the model API, query scopes and events in your own app, or the [Filament package](https://github.com/phoenix1331/filament-jev-moderation).
 - **Swappable.** Jev is behind a driver contract with a fake for tests, so your suite never calls the API.
 
 ## Installation
